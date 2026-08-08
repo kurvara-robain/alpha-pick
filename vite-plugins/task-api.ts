@@ -177,6 +177,100 @@ export function taskApi(): Plugin {
           return
         }
 
+        // ── POST /api/agent/run ──
+        if (url === '/api/agent/run' && req.method === 'POST') {
+          const body = await readBody(req)
+          let params: Record<string, unknown> = {}
+          try { params = JSON.parse(body) } catch { /* */ }
+          const taskId = uid()
+          const child = spawn('/usr/bin/python3', [
+            path.resolve('scripts/agent_runtime.py'), 'run',
+            '--task-id', taskId,
+            '--params', JSON.stringify(params),
+          ], { cwd: process.cwd(), env: { ...process.env, PYTHONUNBUFFERED: '1' }, timeout: 60000 })
+          let stdout = ''
+          child.stdout?.on('data', (d: Buffer) => { stdout += d.toString() })
+          child.on('close', () => {
+            try { json(res, 200, JSON.parse(stdout)) }
+            catch { json(res, 500, { error: stdout.slice(0, 500) }) }
+          })
+          child.on('error', (err) => json(res, 500, { error: err.message }))
+          return
+        }
+
+        // ── POST /api/agent/approve ──
+        if (url === '/api/agent/approve' && req.method === 'POST') {
+          const body = await readBody(req)
+          let params: Record<string, unknown> = {}
+          try { params = JSON.parse(body) } catch { /* */ }
+          const child = spawn('/usr/bin/python3', [
+            path.resolve('scripts/agent_runtime.py'), 'approve',
+            '--run-id', (params.runId as string) ?? '',
+          ], { cwd: process.cwd(), env: { ...process.env, PYTHONUNBUFFERED: '1' }, timeout: 30000 })
+          let stdout = ''
+          child.stdout?.on('data', (d: Buffer) => { stdout += d.toString() })
+          child.on('close', () => {
+            try { json(res, 200, JSON.parse(stdout)) }
+            catch { json(res, 500, { error: stdout.slice(0, 500) }) }
+          })
+          child.on('error', (err) => json(res, 500, { error: err.message }))
+          return
+        }
+
+        // ── GET /api/agent/runs ──
+        if (url === '/api/agent/runs' && req.method === 'GET') {
+          const child = spawn('/usr/bin/python3', [
+            path.resolve('scripts/agent_runtime.py'), 'list',
+          ], { cwd: process.cwd(), env: { ...process.env, PYTHONUNBUFFERED: '1' }, timeout: 10000 })
+          let stdout = ''
+          child.stdout?.on('data', (d: Buffer) => { stdout += d.toString() })
+          child.on('close', () => {
+            try { json(res, 200, JSON.parse(stdout)) }
+            catch { json(res, 200, []) }
+          })
+          child.on('error', () => json(res, 200, []))
+          return
+        }
+
+        // ── POST /api/pit/generate ──
+        if (url === '/api/pit/generate' && req.method === 'POST') {
+          const body = await readBody(req)
+          let params: Record<string, unknown> = {}
+          try { params = JSON.parse(body) } catch { /* */ }
+          const date = (params.date as string) ?? '2025-06-30'
+          const id = uid()
+          const task: Task = {
+            id, type: 'pit_snapshot', status: 'pending', progress: 0,
+            message: 'PIT 截面生成中…', createdAt: new Date().toISOString(),
+          }
+          saveTask(task)
+          const child = spawn('/usr/bin/python3', [
+            path.resolve('scripts/pit_snapshot.py'),
+            '--date', date, '--top-n', '100',
+            '--output', `pit-${date}.json`,
+          ], { cwd: process.cwd(), env: { ...process.env, PYTHONUNBUFFERED: '1' }, timeout: 300000 })
+          child.stdout?.on('data', (d: Buffer) => {
+            const text = d.toString()
+            const pm = text.match(/PROGRESS:(\d+)/)
+            if (pm) { task.progress = parseInt(pm[1]); task.message = `重建中… ${task.progress}%`; saveTask(task) }
+          })
+          child.on('close', (code) => {
+            task.status = code === 0 ? 'completed' : 'failed'
+            task.progress = code === 0 ? 100 : 0
+            task.message = code === 0 ? 'PIT 截面完成' : '生成失败'
+            task.completedAt = new Date().toISOString()
+            saveTask(task)
+          })
+          child.on('error', (err) => {
+            task.status = 'failed'; task.error = err.message
+            task.message = '进程启动失败'; task.completedAt = new Date().toISOString()
+            saveTask(task)
+          })
+          json(res, 202, { taskId: id, status: 'pending' })
+          return
+        }
+
+
         // ── POST /api/tasks/backtest ──
         if (url === '/api/tasks/backtest' && req.method === 'POST') {
           const body = await readBody(req)

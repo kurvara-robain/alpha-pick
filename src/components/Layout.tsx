@@ -1,7 +1,8 @@
-import { NavLink, Outlet } from 'react-router'
+import { Link, NavLink, Outlet } from 'react-router'
 import {
   BarChart3,
   BrainCircuit,
+  Clock,
   FlaskConical,
   Gauge,
   LayoutList,
@@ -26,6 +27,7 @@ export const NAV_ITEMS = [
   { to: '/reports', label: '研究报告', icon: Newspaper },
   { to: '/research', label: '个股投研', icon: FileSearch },
   { to: '/simtrade', label: '模拟交易', icon: TrendingUp },
+  { to: '/pit', label: '时间旅行', icon: Clock },
 ] as const
 
 export default function Layout() {
@@ -35,14 +37,14 @@ export default function Layout() {
       <header className="sticky top-0 z-40 border-b border-gray-700 bg-[#1A1A2E]">
         <div className="mx-auto flex h-11 max-w-7xl items-center gap-1 px-4">
           {/* Brand */}
-          <div className="mr-4 flex items-center gap-2">
+          <Link to="/" className="mr-4 flex items-center gap-2 hover:opacity-80 transition-opacity">
             <span className="flex h-7 w-7 items-center justify-center rounded bg-amber-500">
               <BrainCircuit size={14} className="text-[#1A1A2E]" />
             </span>
             <span className="text-sm font-bold tracking-wide text-white">
               AlphaMind<span className="ml-1 text-amber-500">量化选股</span>
             </span>
-          </div>
+          </Link>
 
           {/* Navigation links */}
           <nav className="flex h-full items-center gap-0.5">

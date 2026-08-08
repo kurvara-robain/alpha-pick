@@ -1,7 +1,7 @@
 // V1.0 Investment Cockpit — minimal bootstrap
 import { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router'
-import { BrainCircuit, ChevronRight, Database, Gauge, LayoutList, LineChart, Newspaper, Search, Shield, Sparkles, TrendingUp, Wallet } from 'lucide-react'
+import { BrainCircuit, ChevronRight, Database, Gauge, LayoutList, LineChart, Newspaper, Search, Shield, Sparkles, TrendingUp, Wallet, Bell } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
@@ -14,6 +14,8 @@ import { fmtNum, fmtPct, pctColor } from '@/lib/format'
 import { getDB } from '@/lib/store'
 import { buildDataVersion } from '@/lib/versionMetadata'
 import Sparkline from '@/components/Sparkline'
+import { getAlerts, checkSignalChanges, requestNotificationPermission, markAlertsRead } from '@/lib/alerts'
+import { useEffect, useState } from 'react'
 
 export default function HomePage() {
   const indicesState = useAsync(loadIndices)
@@ -21,6 +23,14 @@ export default function HomePage() {
   const universeState = useAsync(loadUniverse)
   const navigate = useNavigate()
   const [query, setQuery] = useState('')
+  const [alerts, setAlerts] = useState(getAlerts())
+  const [showAlerts, setShowAlerts] = useState(false)
+
+  useEffect(() => {
+    requestNotificationPermission()
+    const added = checkSignalChanges()
+    if (added > 0) setAlerts(getAlerts())
+  }, [])
 
   const loading = indicesState.loading || metaState.loading || universeState.loading
   const error = indicesState.error ?? metaState.error ?? universeState.error
@@ -45,6 +55,19 @@ export default function HomePage() {
     <div className="space-y-6">
       {/* AI 搜索栏 */}
       <div className="text-center">
+        <div className="flex items-center justify-end mb-1">
+          {alerts.length > 0 && (
+            <button onClick={() => { setShowAlerts(!showAlerts); if (!showAlerts) markAlertsRead(alerts.filter(a => !a.read).map(a => a.id)) }}
+              className="relative rounded-full p-1.5 hover:bg-gray-100">
+              <Bell className="h-5 w-5 text-gray-500" />
+              {alerts.filter(a => !a.read).length > 0 && (
+                <span className="absolute -top-0.5 -right-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-rose-500 text-[10px] font-bold text-white">
+                  {alerts.filter(a => !a.read).length}
+                </span>
+              )}
+            </button>
+          )}
+        </div>
         <h1 className="mb-1 text-2xl font-bold text-gray-900">AlphaMind <span className="text-amber-500">量化投研</span></h1>
         <p className="mb-4 text-sm text-gray-400">用自然语言完成选股、诊股和研究</p>
         <div className="flex items-center gap-3 rounded-xl border-2 border-amber-300 bg-white p-1 shadow-sm mx-auto max-w-2xl">
@@ -60,7 +83,18 @@ export default function HomePage() {
         </div>
       </div>
 
-      {/* 快速入口 */}
+      {/* 提醒面板 */}
+      {showAlerts && alerts.length > 0 && (
+        <div className="mb-4 rounded-lg border border-gray-200 bg-white p-3 shadow-lg max-w-md mx-auto">
+          {alerts.slice(0, 5).map((a) => (
+            <div key={a.id} className={`flex items-start gap-2 py-1.5 text-xs ${a.read ? 'text-gray-400' : 'text-gray-900 font-medium'}`}>
+              <span className={`mt-0.5 h-2 w-2 rounded-full shrink-0 ${a.severity === 'critical' ? 'bg-rose-500' : a.severity === 'warning' ? 'bg-amber-500' : 'bg-blue-500'}`} />
+              <div className="flex-1">{a.message}</div>
+              {a.action && <a href={a.action.url} className="text-amber-500 hover:underline">{a.action.label}</a>}
+            </div>
+          ))}
+        </div>
+      )}
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-6">
         {[
           { to: '/market', icon: Gauge, label: '市场全览', color: 'text-blue-500 bg-blue-50' },
