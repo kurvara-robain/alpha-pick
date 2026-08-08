@@ -40,6 +40,7 @@ import { generateNLResearchReport, generateNarrativeSummary } from '@/lib/resear
 import type { ResearchReport, DimensionResult, ResearchFramework } from '@/lib/researchTypes'
 import type { ResearchDocument } from '@/lib/researchKnowledge'
 import UploadDialog from '@/components/UploadDialog'
+import { AgentGraph, LazyLoader } from '@/components/LazyComponents'
 
 // ═══════════════════════════════════════════════════════════════
 // 复用小组件
@@ -545,6 +546,8 @@ export default function ResearchPage() {
           </div>
         </div>
       )}
+
+      <LazyLoader><AgentGraph /></LazyLoader>
     </div>
   )
 }

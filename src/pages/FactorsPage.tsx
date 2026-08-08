@@ -21,6 +21,7 @@ import { loadFactorResearch, loadMlBacktest } from '@/lib/marketData'
 import type { FactorResearch, FactorResearchResult } from '@/lib/marketData'
 import { useAsync } from '@/lib/useAsync'
 import { cn } from '@/lib/utils'
+import { FactorDiagnostics, LazyLoader } from '@/components/LazyComponents'
 import {
   CartesianGrid,
   Line,
@@ -644,6 +645,7 @@ export default function FactorsPage() {
             等待首次周度实测
           </section>
         ))}
+      <LazyLoader><FactorDiagnostics /></LazyLoader>
     </div>
   )
 }

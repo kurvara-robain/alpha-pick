@@ -20,6 +20,7 @@ import { runScreening } from '@/lib/api'
 import { getDB, subscribeDB, uid, updateDB } from '@/lib/store'
 import type { StrategyCondition, WatchItem } from '@/lib/types'
 import { cn } from '@/lib/utils'
+import { PortfolioRisk, LazyLoader } from '@/components/LazyComponents'
 
 /** 有方向语义的因子字段：asc = 反转型（值小好，买跌），desc = 动量型（值大好，追涨） */
 const DIRECTIONAL_FACTOR_FIELDS = new Set(['mom20', 'mom60', 'ret5', 'sharpe20', 'pos60'])
@@ -420,6 +421,8 @@ export default function WorkbenchPage() {
             </>
           )}
         </section>
+
+        <LazyLoader><PortfolioRisk /></LazyLoader>
       </div>
     </div>
   )

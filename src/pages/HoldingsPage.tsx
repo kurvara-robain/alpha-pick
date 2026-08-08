@@ -27,6 +27,7 @@ import { useAsync } from '@/lib/useAsync'
 import { fmtNum, fmtPct, pctColor } from '@/lib/format'
 import type { ChanAnalysis, DiagnosisAdvice, Holding } from '@/lib/types'
 import { cn } from '@/lib/utils'
+import { PortfolioRisk, LazyLoader } from '@/components/LazyComponents'
 
 function useDB() {
   return useSyncExternalStore(subscribeDB, getDB)
@@ -607,6 +608,8 @@ export default function HoldingsPage() {  const db = useDB()
           ))}
         </div>
       )}
+
+      <LazyLoader><PortfolioRisk /></LazyLoader>
     </div>
   )
 }

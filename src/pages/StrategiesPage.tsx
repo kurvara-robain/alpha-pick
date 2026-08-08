@@ -18,6 +18,8 @@ import { Input } from '@/components/ui/input'
 import { Switch } from '@/components/ui/switch'
 import { Textarea } from '@/components/ui/textarea'
 import { getDB, subscribeDB, uid, updateDB } from '@/lib/store'
+import { StrategyDebugger, LazyLoader } from '@/components/LazyComponents'
+import { DSLEditor } from '@/components/LazyComponents'
 import { parseStrategyNL, type ParseResult } from '@/lib/api'
 import type { Strategy, StrategyCondition, StrategyKind } from '@/lib/types'
 
@@ -467,6 +469,11 @@ export default function StrategiesPage() {
           />
         </div>
       )}
+      {/* DSL 编辑器 */}
+      <LazyLoader><DSLEditor /></LazyLoader>
+
+      {/* 策略调试器 */}
+      <LazyLoader><StrategyDebugger /></LazyLoader>
     </div>
   )
 }

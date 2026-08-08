@@ -1,0 +1,22 @@
+{
+  "name": "AlphaMind 量化投研",
+  "short_name": "AlphaMind",
+  "description": "AI 驱动的 A 股量化投研平台 — 选股、诊股、回测、模拟交易",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#f9fafb",
+  "theme_color": "#f59e0b",
+  "orientation": "any",
+  "icons": [
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
