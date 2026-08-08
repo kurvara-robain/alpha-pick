@@ -1,0 +1,33 @@
+{
+ "checkedAt": "2026-07-27T10:24:30+08:00",
+ "ok": true,
+ "checks": [
+  {
+   "name": "hfq覆盖率",
+   "value": "99.8%（5186/5196）",
+   "ok": true
+  },
+  {
+   "name": "hfq价格合法性",
+   "value": "非正价格 167 条（0.0016%）",
+   "ok": true
+  },
+  {
+   "name": "hfq极端收益率",
+   "value": "|5日收益|>300% 共 35 条",
+   "ok": true
+  },
+  {
+   "name": "数据新鲜度",
+   "value": "最新K线 2026-07-24（3 天前）",
+   "ok": true
+  },
+  {
+   "name": "universe字段",
+   "value": "5184 只，缺失字段：无",
+   "ok": true
+  }
+ ],
+ "blocked": [],
+ "elapsedSec": 4.4
+}

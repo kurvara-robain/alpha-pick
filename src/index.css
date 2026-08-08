@@ -1,0 +1,73 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 0 0% 100%;
+    --foreground: 222 47% 11%;
+    --card: 0 0% 100%;
+    --card-foreground: 222 47% 11%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 222 47% 11%;
+    --primary: 222 47% 11%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 210 40% 96%;
+    --secondary-foreground: 222 47% 11%;
+    --muted: 210 40% 96%;
+    --muted-foreground: 215 16% 47%;
+    --accent: 210 40% 96%;
+    --accent-foreground: 222 47% 11%;
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 214 32% 91%;
+    --input: 214 32% 91%;
+    --ring: 222 47% 11%;
+    --radius: 0.375rem;
+    --sidebar-background: 222 47% 11%;
+    --sidebar-foreground: 0 0% 100%;
+    --sidebar-primary: 36 100% 50%;
+    --sidebar-primary-foreground: 222 47% 11%;
+    --sidebar-accent: 217 33% 17%;
+    --sidebar-accent-foreground: 0 0% 100%;
+    --sidebar-border: 217 33% 17%;
+    --sidebar-ring: 36 100% 50%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-gray-50 text-gray-900;
+    font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Segoe UI", sans-serif;
+  }
+}
+
+/* Bloomberg-style compact tables */
+@layer components {
+  .bloomberg-table {
+    @apply w-full text-xs;
+  }
+  .bloomberg-table th {
+    @apply border-b-2 border-gray-300 bg-gray-100 px-2 py-1.5 text-left font-semibold text-gray-600 uppercase tracking-wide;
+  }
+  .bloomberg-table td {
+    @apply border-b border-gray-200 px-2 py-1.5 font-mono tabular-nums text-gray-900;
+  }
+  .bloomberg-table tr:hover td {
+    @apply bg-amber-50;
+  }
+
+  /* Bloomberg card */
+  .bb-card {
+    @apply rounded border border-gray-200 bg-white;
+  }
+  .bb-card-header {
+    @apply border-b border-gray-200 bg-gray-50 px-4 py-2.5 text-xs font-semibold uppercase tracking-wide text-gray-600;
+  }
+  .bb-card-body {
+    @apply p-4;
+  }
+}

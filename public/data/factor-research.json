@@ -1,0 +1,2001 @@
+{
+ "updatedAt": "2026-07-27T10:50:02+08:00",
+ "method": "全A截面 Spearman 秩 IC；评估日间隔10交易日；前瞻5/10/20/40日；dic20=方向化IC20均值；dicir20=方向化ICIR；spread20=方向化top30%-bottom30%多空20日利差%",
+ "window": {
+  "evalDates": 220,
+  "stocks": 5105
+ },
+ "results": {
+  "vol20": {
+   "name": "低波动率(20日)",
+   "dir": "asc",
+   "kind": "core",
+   "ic5": {
+    "mean": -0.0587,
+    "ir": -0.28,
+    "tstat": -4.1,
+    "posRatio": 0.373,
+    "dates": 220
+   },
+   "ic10": {
+    "mean": -0.072,
+    "ir": -0.35,
+    "tstat": -5.19,
+    "posRatio": 0.345,
+    "dates": 220
+   },
+   "ic20": {
+    "mean": -0.082,
+    "ir": -0.39,
+    "tstat": -5.79,
+    "posRatio": 0.355,
+    "dates": 220
+   },
+   "ic40": {
+    "mean": -0.1031,
+    "ir": -0.54,
+    "tstat": -8.05,
+    "posRatio": 0.277,
+    "dates": 220
+   },
+   "dic20": 0.082,
+   "dicir20": 0.39,
+   "spread20": 0.17,
+   "spreadPosRatio": 0.509
+  },
+  "vol60": {
+   "name": "中期波动(60日)",
+   "dir": "asc",
+   "kind": "core",
+   "ic5": {
+    "mean": -0.055,
+    "ir": -0.24,
+    "tstat": -3.58,
+    "posRatio": 0.395,
+    "dates": 220
+   },
+   "ic10": {
+    "mean": -0.0676,
+    "ir": -0.3,
+    "tstat": -4.45,
+    "posRatio": 0.386,
+    "dates": 220
+   },
+   "ic20": {
+    "mean": -0.0813,
+    "ir": -0.36,
+    "tstat": -5.37,
+    "posRatio": 0.345,
+    "dates": 220
+   },
+   "ic40": {
+    "mean": -0.1019,
+    "ir": -0.49,
+    "tstat": -7.31,
+    "posRatio": 0.309,
+    "dates": 220
+   },
+   "dic20": 0.0813,
+   "dicir20": 0.36,
+   "spread20": 0.21,
+   "spreadPosRatio": 0.518
+  },
+  "cpv20": {
+   "name": "量价背离 CPV(20日)",
+   "dir": "asc",
+   "kind": "core",
+   "ic5": {
+    "mean": -0.0572,
+    "ir": -0.53,
+    "tstat": -7.82,
+    "posRatio": 0.286,
+    "dates": 220
+   },
+   "ic10": {
+    "mean": -0.0629,
+    "ir": -0.61,
+    "tstat": -9.03,
+    "posRatio": 0.286,
+    "dates": 220
+   },
+   "ic20": {
+    "mean": -0.0716,
+    "ir": -0.65,
+    "tstat": -9.71,
+    "posRatio": 0.245,
+    "dates": 220
+   },
+   "ic40": {
+    "mean": -0.0744,
+    "ir": -0.69,
+    "tstat": -10.22,
+    "posRatio": 0.232,
+    "dates": 220
+   },
+   "dic20": 0.0716,
+   "dicir20": 0.65,
+   "spread20": 0.83,
+   "spreadPosRatio": 0.682
+  },
+  "cpv10": {
+   "name": "量价背离 CPV(10日)",
+   "dir": "asc",
+   "kind": "core",
+   "ic5": {
+    "mean": -0.0548,
+    "ir": -0.54,
+    "tstat": -8.03,
+    "posRatio": 0.295,
+    "dates": 220
+   },
+   "ic10": {
+    "mean": -0.0604,
+    "ir": -0.63,
+    "tstat": -9.39,
+    "posRatio": 0.245,
+    "dates": 220
+   },
+   "ic20": {
+    "mean": -0.0714,
+    "ir": -0.72,
+    "tstat": -10.7,
+    "posRatio": 0.191,
+    "dates": 220
+   },
+   "ic40": {
+    "mean": -0.0727,
+    "ir": -0.73,
+    "tstat": -10.85,
+    "posRatio": 0.214,
+    "dates": 220
+   },
+   "dic20": 0.0714,
+   "dicir20": 0.72,
+   "spread20": 0.92,
+   "spreadPosRatio": 0.723
+  },
+  "vcv20": {
+   "name": "量能稳定度(20日)",
+   "dir": "asc",
+   "kind": "core",
+   "ic5": {
+    "mean": -0.0485,
+    "ir": -0.61,
+    "tstat": -9.02,
+    "posRatio": 0.282,
+    "dates": 220
+   },
+   "ic10": {
+    "mean": -0.0523,
+    "ir": -0.66,
+    "tstat": -9.77,
+    "posRatio": 0.236,
+    "dates": 220
+   },
+   "ic20": {
+    "mean": -0.0538,
+    "ir": -0.67,
+    "tstat": -9.95,
+    "posRatio": 0.236,
+    "dates": 220
+   },
+   "ic40": {
+    "mean": -0.0527,
+    "ir": -0.68,
+    "tstat": -10.15,
+    "posRatio": 0.214,
+    "dates": 220
+   },
+   "dic20": 0.0538,
+   "dicir20": 0.67,
+   "spread20": 0.64,
+   "spreadPosRatio": 0.655
+  },
+  "ret5": {
+   "name": "短期反转(5日)",
+   "dir": "asc",
+   "kind": "core",
+   "ic5": {
+    "mean": -0.0455,
+    "ir": -0.32,
+    "tstat": -4.73,
+    "posRatio": 0.409,
+    "dates": 220
+   },
+   "ic10": {
+    "mean": -0.0417,
+    "ir": -0.29,
+    "tstat": -4.28,
+    "posRatio": 0.4,
+    "dates": 220
+   },
+   "ic20": {
+    "mean": -0.0389,
+    "ir": -0.28,
+    "tstat": -4.19,
+    "posRatio": 0.45,
+    "dates": 220
+   },
+   "ic40": {
+    "mean": -0.0354,
+    "ir": -0.27,
+    "tstat": -3.97,
+    "posRatio": 0.423,
+    "dates": 220
+   },
+   "dic20": 0.0389,
+   "dicir20": 0.28,
+   "spread20": 0.54,
+   "spreadPosRatio": 0.536
+  },
+  "sharpe20": {
+   "name": "动量质量 Sharpe",
+   "dir": "desc",
+   "kind": "core",
+   "ic5": {
+    "mean": -0.0365,
+    "ir": -0.26,
+    "tstat": -3.8,
+    "posRatio": 0.427,
+    "dates": 220
+   },
+   "ic10": {
+    "mean": -0.0469,
+    "ir": -0.32,
+    "tstat": -4.81,
+    "posRatio": 0.386,
+    "dates": 220
+   },
+   "ic20": {
+    "mean": -0.0529,
+    "ir": -0.36,
+    "tstat": -5.27,
+    "posRatio": 0.332,
+    "dates": 220
+   },
+   "ic40": {
+    "mean": -0.0576,
+    "ir": -0.41,
+    "tstat": -6.02,
+    "posRatio": 0.341,
+    "dates": 220
+   },
+   "dic20": -0.0529,
+   "dicir20": -0.36,
+   "spread20": -0.47,
+   "spreadPosRatio": 0.436
+  },
+  "maxdd60": {
+   "name": "回撤控制(60日)",
+   "dir": "asc",
+   "kind": "core",
+   "ic5": {
+    "mean": 0.0019,
+    "ir": 0.01,
+    "tstat": 0.15,
+    "posRatio": 0.473,
+    "dates": 220
+   },
+   "ic10": {
+    "mean": 0.0032,
+    "ir": 0.02,
+    "tstat": 0.25,
+    "posRatio": 0.5,
+    "dates": 220
+   },
+   "ic20": {
+    "mean": 0.0028,
+    "ir": 0.01,
+    "tstat": 0.2,
+    "posRatio": 0.5,
+    "dates": 220
+   },
+   "ic40": {
+    "mean": 0.0036,
+    "ir": 0.02,
+    "tstat": 0.26,
+    "posRatio": 0.477,
+    "dates": 220
+   },
+   "dic20": -0.0028,
+   "dicir20": -0.01,
+   "spread20": 0.48,
+   "spreadPosRatio": 0.545
+  },
+  "mom20": {
+   "name": "ROC-20 动量",
+   "dir": "desc",
+   "kind": "core",
+   "ic5": {
+    "mean": -0.0482,
+    "ir": -0.3,
+    "tstat": -4.42,
+    "posRatio": 0.414,
+    "dates": 220
+   },
+   "ic10": {
+    "mean": -0.0626,
+    "ir": -0.39,
+    "tstat": -5.82,
+    "posRatio": 0.4,
+    "dates": 220
+   },
+   "ic20": {
+    "mean": -0.0703,
+    "ir": -0.43,
+    "tstat": -6.33,
+    "posRatio": 0.364,
+    "dates": 220
+   },
+   "ic40": {
+    "mean": -0.0714,
+    "ir": -0.47,
+    "tstat": -6.96,
+    "posRatio": 0.345,
+    "dates": 220
+   },
+   "dic20": -0.0703,
+   "dicir20": -0.43,
+   "spread20": -0.8,
+   "spreadPosRatio": 0.436
+  },
+  "mom60": {
+   "name": "ROC-60 动量",
+   "dir": "desc",
+   "kind": "core",
+   "ic5": {
+    "mean": -0.0517,
+    "ir": -0.29,
+    "tstat": -4.33,
+    "posRatio": 0.373,
+    "dates": 220
+   },
+   "ic10": {
+    "mean": -0.0609,
+    "ir": -0.35,
+    "tstat": -5.17,
+    "posRatio": 0.341,
+    "dates": 220
+   },
+   "ic20": {
+    "mean": -0.0651,
+    "ir": -0.37,
+    "tstat": -5.49,
+    "posRatio": 0.332,
+    "dates": 220
+   },
+   "ic40": {
+    "mean": -0.0688,
+    "ir": -0.46,
+    "tstat": -6.77,
+    "posRatio": 0.345,
+    "dates": 220
+   },
+   "dic20": -0.0651,
+   "dicir20": -0.37,
+   "spread20": -0.67,
+   "spreadPosRatio": 0.427
+  },
+  "vol120": {
+   "name": "长期波动(120日)",
+   "dir": "asc",
+   "kind": "candidate",
+   "ic5": {
+    "mean": -0.0485,
+    "ir": -0.21,
+    "tstat": -3.1,
+    "posRatio": 0.4,
+    "dates": 220
+   },
+   "ic10": {
+    "mean": -0.0607,
+    "ir": -0.26,
+    "tstat": -3.91,
+    "posRatio": 0.395,
+    "dates": 220
+   },
+   "ic20": {
+    "mean": -0.074,
+    "ir": -0.32,
+    "tstat": -4.76,
+    "posRatio": 0.395,
+    "dates": 220
+   },
+   "ic40": {
+    "mean": -0.0942,
+    "ir": -0.44,
+    "tstat": -6.46,
+    "posRatio": 0.332,
+    "dates": 220
+   },
+   "dic20": 0.074,
+   "dicir20": 0.32,
+   "spread20": 0.13,
+   "spreadPosRatio": 0.527
+  },
+  "maxdd120": {
+   "name": "回撤控制(120日)",
+   "dir": "asc",
+   "kind": "candidate",
+   "ic5": {
+    "mean": 0.005,
+    "ir": 0.03,
+    "tstat": 0.4,
+    "posRatio": 0.45,
+    "dates": 220
+   },
+   "ic10": {
+    "mean": 0.0076,
+    "ir": 0.04,
+    "tstat": 0.58,
+    "posRatio": 0.514,
+    "dates": 220
+   },
+   "ic20": {
+    "mean": 0.0078,
+    "ir": 0.04,
+    "tstat": 0.56,
+    "posRatio": 0.495,
+    "dates": 220
+   },
+   "ic40": {
+    "mean": 0.0095,
+    "ir": 0.05,
+    "tstat": 0.69,
+    "posRatio": 0.486,
+    "dates": 220
+   },
+   "dic20": -0.0078,
+   "dicir20": -0.04,
+   "spread20": 0.48,
+   "spreadPosRatio": 0.55
+  },
+  "atr14": {
+   "name": "ATR 真实波幅占比",
+   "dir": "asc",
+   "kind": "candidate",
+   "ic5": {
+    "mean": -0.047,
+    "ir": -0.25,
+    "tstat": -3.78,
+    "posRatio": 0.373,
+    "dates": 220
+   },
+   "ic10": {
+    "mean": -0.0585,
+    "ir": -0.32,
+    "tstat": -4.78,
+    "posRatio": 0.386,
+    "dates": 220
+   },
+   "ic20": {
+    "mean": -0.0631,
+    "ir": -0.34,
+    "tstat": -5.07,
+    "posRatio": 0.368,
+    "dates": 220
+   },
+   "ic40": {
+    "mean": -0.0738,
+    "ir": -0.46,
+    "tstat": -6.8,
+    "posRatio": 0.286,
+    "dates": 220
+   },
+   "dic20": 0.0631,
+   "dicir20": 0.34,
+   "spread20": -0.07,
+   "spreadPosRatio": 0.5
+  },
+  "range20": {
+   "name": "日内振幅(20日均)",
+   "dir": "asc",
+   "kind": "candidate",
+   "ic5": {
+    "mean": -0.0468,
+    "ir": -0.26,
+    "tstat": -3.8,
+    "posRatio": 0.359,
+    "dates": 220
+   },
+   "ic10": {
+    "mean": -0.0571,
+    "ir": -0.32,
+    "tstat": -4.7,
+    "posRatio": 0.391,
+    "dates": 220
+   },
+   "ic20": {
+    "mean": -0.0645,
+    "ir": -0.35,
+    "tstat": -5.16,
+    "posRatio": 0.373,
+    "dates": 220
+   },
+   "ic40": {
+    "mean": -0.0742,
+    "ir": -0.45,
+    "tstat": -6.75,
+    "posRatio": 0.323,
+    "dates": 220
+   },
+   "dic20": 0.0645,
+   "dicir20": 0.35,
+   "spread20": 0.05,
+   "spreadPosRatio": 0.5
+  },
+  "park20": {
+   "name": "Parkinson 波动率",
+   "dir": "asc",
+   "kind": "candidate",
+   "ic5": {
+    "mean": -0.0512,
+    "ir": -0.29,
+    "tstat": -4.24,
+    "posRatio": 0.345,
+    "dates": 220
+   },
+   "ic10": {
+    "mean": -0.062,
+    "ir": -0.35,
+    "tstat": -5.23,
+    "posRatio": 0.368,
+    "dates": 220
+   },
+   "ic20": {
+    "mean": -0.0694,
+    "ir": -0.38,
+    "tstat": -5.7,
+    "posRatio": 0.345,
+    "dates": 220
+   },
+   "ic40": {
+    "mean": -0.0789,
+    "ir": -0.5,
+    "tstat": -7.39,
+    "posRatio": 0.291,
+    "dates": 220
+   },
+   "dic20": 0.0694,
+   "dicir20": 0.38,
+   "spread20": 0.14,
+   "spreadPosRatio": 0.514
+  },
+  "dsvol20": {
+   "name": "下行半波(20日)",
+   "dir": "asc",
+   "kind": "candidate",
+   "ic5": {
+    "mean": -0.0381,
+    "ir": -0.17,
+    "tstat": -2.53,
+    "posRatio": 0.382,
+    "dates": 220
+   },
+   "ic10": {
+    "mean": -0.0477,
+    "ir": -0.22,
+    "tstat": -3.26,
+    "posRatio": 0.405,
+    "dates": 220
+   },
+   "ic20": {
+    "mean": -0.0566,
+    "ir": -0.26,
+    "tstat": -3.93,
+    "posRatio": 0.386,
+    "dates": 220
+   },
+   "ic40": {
+    "mean": -0.0775,
+    "ir": -0.41,
+    "tstat": -6.03,
+    "posRatio": 0.323,
+    "dates": 220
+   },
+   "dic20": 0.0566,
+   "dicir20": 0.26,
+   "spread20": -0.09,
+   "spreadPosRatio": 0.509
+  },
+  "skew20": {
+   "name": "收益偏度(20日)",
+   "dir": "asc",
+   "kind": "candidate",
+   "ic5": {
+    "mean": -0.0236,
+    "ir": -0.31,
+    "tstat": -4.58,
+    "posRatio": 0.386,
+    "dates": 220
+   },
+   "ic10": {
+    "mean": -0.0292,
+    "ir": -0.39,
+    "tstat": -5.85,
+    "posRatio": 0.359,
+    "dates": 220
+   },
+   "ic20": {
+    "mean": -0.0309,
+    "ir": -0.39,
+    "tstat": -5.85,
+    "posRatio": 0.314,
+    "dates": 220
+   },
+   "ic40": {
+    "mean": -0.0297,
+    "ir": -0.42,
+    "tstat": -6.16,
+    "posRatio": 0.345,
+    "dates": 220
+   },
+   "dic20": 0.0309,
+   "dicir20": 0.39,
+   "spread20": 0.25,
+   "spreadPosRatio": 0.564
+  },
+  "kurt20": {
+   "name": "收益峰度(20日)",
+   "dir": "asc",
+   "kind": "candidate",
+   "ic5": {
+    "mean": -0.0064,
+    "ir": -0.1,
+    "tstat": -1.49,
+    "posRatio": 0.418,
+    "dates": 220
+   },
+   "ic10": {
+    "mean": -0.0012,
+    "ir": -0.02,
+    "tstat": -0.26,
+    "posRatio": 0.464,
+    "dates": 220
+   },
+   "ic20": {
+    "mean": 0.0021,
+    "ir": 0.03,
+    "tstat": 0.45,
+    "posRatio": 0.445,
+    "dates": 220
+   },
+   "ic40": {
+    "mean": 0.0055,
+    "ir": 0.08,
+    "tstat": 1.21,
+    "posRatio": 0.482,
+    "dates": 220
+   },
+   "dic20": -0.0021,
+   "dicir20": -0.03,
+   "spread20": -0.03,
+   "spreadPosRatio": 0.55
+  },
+  "cpv60": {
+   "name": "量价背离 CPV(60日)",
+   "dir": "asc",
+   "kind": "candidate",
+   "ic5": {
+    "mean": -0.0398,
+    "ir": -0.35,
+    "tstat": -5.12,
+    "posRatio": 0.368,
+    "dates": 220
+   },
+   "ic10": {
+    "mean": -0.0405,
+    "ir": -0.35,
+    "tstat": -5.15,
+    "posRatio": 0.35,
+    "dates": 220
+   },
+   "ic20": {
+    "mean": -0.048,
+    "ir": -0.41,
+    "tstat": -6.15,
+    "posRatio": 0.318,
+    "dates": 220
+   },
+   "ic40": {
+    "mean": -0.058,
+    "ir": -0.54,
+    "tstat": -7.94,
+    "posRatio": 0.273,
+    "dates": 220
+   },
+   "dic20": 0.048,
+   "dicir20": 0.41,
+   "spread20": 0.53,
+   "spreadPosRatio": 0.591
+  },
+  "vcv60": {
+   "name": "量能稳定度(60日)",
+   "dir": "asc",
+   "kind": "candidate",
+   "ic5": {
+    "mean": -0.0415,
+    "ir": -0.38,
+    "tstat": -5.64,
+    "posRatio": 0.359,
+    "dates": 220
+   },
+   "ic10": {
+    "mean": -0.0433,
+    "ir": -0.4,
+    "tstat": -5.88,
+    "posRatio": 0.295,
+    "dates": 220
+   },
+   "ic20": {
+    "mean": -0.0481,
+    "ir": -0.44,
+    "tstat": -6.53,
+    "posRatio": 0.327,
+    "dates": 220
+   },
+   "ic40": {
+    "mean": -0.0547,
+    "ir": -0.51,
+    "tstat": -7.61,
+    "posRatio": 0.286,
+    "dates": 220
+   },
+   "dic20": 0.0481,
+   "dicir20": 0.44,
+   "spread20": 0.57,
+   "spreadPosRatio": 0.605
+  },
+  "vr560": {
+   "name": "量能比(5/60日)",
+   "dir": "asc",
+   "kind": "candidate",
+   "ic5": {
+    "mean": -0.0367,
+    "ir": -0.32,
+    "tstat": -4.75,
+    "posRatio": 0.377,
+    "dates": 220
+   },
+   "ic10": {
+    "mean": -0.047,
+    "ir": -0.39,
+    "tstat": -5.84,
+    "posRatio": 0.364,
+    "dates": 220
+   },
+   "ic20": {
+    "mean": -0.0477,
+    "ir": -0.41,
+    "tstat": -6.14,
+    "posRatio": 0.323,
+    "dates": 220
+   },
+   "ic40": {
+    "mean": -0.0515,
+    "ir": -0.48,
+    "tstat": -7.12,
+    "posRatio": 0.327,
+    "dates": 220
+   },
+   "dic20": 0.0477,
+   "dicir20": 0.41,
+   "spread20": 0.42,
+   "spreadPosRatio": 0.582
+  },
+  "vr2060": {
+   "name": "量能比(20/60日)",
+   "dir": "asc",
+   "kind": "candidate",
+   "ic5": {
+    "mean": -0.0342,
+    "ir": -0.31,
+    "tstat": -4.55,
+    "posRatio": 0.386,
+    "dates": 220
+   },
+   "ic10": {
+    "mean": -0.0436,
+    "ir": -0.38,
+    "tstat": -5.59,
+    "posRatio": 0.364,
+    "dates": 220
+   },
+   "ic20": {
+    "mean": -0.0492,
+    "ir": -0.44,
+    "tstat": -6.48,
+    "posRatio": 0.305,
+    "dates": 220
+   },
+   "ic40": {
+    "mean": -0.0542,
+    "ir": -0.53,
+    "tstat": -7.82,
+    "posRatio": 0.309,
+    "dates": 220
+   },
+   "dic20": 0.0492,
+   "dicir20": 0.44,
+   "spread20": 0.53,
+   "spreadPosRatio": 0.6
+  },
+  "illiq20": {
+   "name": "Amihud 非流动性",
+   "dir": "desc",
+   "kind": "candidate",
+   "ic5": {
+    "mean": 0.0256,
+    "ir": 0.2,
+    "tstat": 2.98,
+    "posRatio": 0.559,
+    "dates": 220
+   },
+   "ic10": {
+    "mean": 0.0226,
+    "ir": 0.17,
+    "tstat": 2.53,
+    "posRatio": 0.559,
+    "dates": 220
+   },
+   "ic20": {
+    "mean": 0.0286,
+    "ir": 0.21,
+    "tstat": 3.14,
+    "posRatio": 0.6,
+    "dates": 220
+   },
+   "ic40": {
+    "mean": 0.0323,
+    "ir": 0.24,
+    "tstat": 3.55,
+    "posRatio": 0.645,
+    "dates": 220
+   },
+   "dic20": 0.0286,
+   "dicir20": 0.21,
+   "spread20": 0.69,
+   "spreadPosRatio": 0.627
+  },
+  "mfi14": {
+   "name": "资金流量 MFI(14)",
+   "dir": "asc",
+   "kind": "candidate",
+   "ic5": {
+    "mean": -0.0242,
+    "ir": -0.21,
+    "tstat": -3.05,
+    "posRatio": 0.455,
+    "dates": 220
+   },
+   "ic10": {
+    "mean": -0.0291,
+    "ir": -0.24,
+    "tstat": -3.59,
+    "posRatio": 0.382,
+    "dates": 220
+   },
+   "ic20": {
+    "mean": -0.0357,
+    "ir": -0.3,
+    "tstat": -4.52,
+    "posRatio": 0.355,
+    "dates": 220
+   },
+   "ic40": {
+    "mean": -0.0424,
+    "ir": -0.37,
+    "tstat": -5.49,
+    "posRatio": 0.332,
+    "dates": 220
+   },
+   "dic20": 0.0357,
+   "dicir20": 0.3,
+   "spread20": 0.27,
+   "spreadPosRatio": 0.577
+  },
+  "obv20": {
+   "name": "OBV 趋势(20日斜率)",
+   "dir": "desc",
+   "kind": "candidate",
+   "ic5": {
+    "mean": -0.0282,
+    "ir": -0.26,
+    "tstat": -3.84,
+    "posRatio": 0.395,
+    "dates": 220
+   },
+   "ic10": {
+    "mean": -0.032,
+    "ir": -0.28,
+    "tstat": -4.2,
+    "posRatio": 0.414,
+    "dates": 220
+   },
+   "ic20": {
+    "mean": -0.0375,
+    "ir": -0.35,
+    "tstat": -5.24,
+    "posRatio": 0.377,
+    "dates": 220
+   },
+   "ic40": {
+    "mean": -0.041,
+    "ir": -0.37,
+    "tstat": -5.56,
+    "posRatio": 0.332,
+    "dates": 220
+   },
+   "dic20": -0.0375,
+   "dicir20": -0.35,
+   "spread20": -0.37,
+   "spreadPosRatio": 0.432
+  },
+  "clv20": {
+   "name": "收盘位置 CLV(20日)",
+   "dir": "asc",
+   "kind": "candidate",
+   "ic5": {
+    "mean": -0.0139,
+    "ir": -0.11,
+    "tstat": -1.69,
+    "posRatio": 0.486,
+    "dates": 220
+   },
+   "ic10": {
+    "mean": -0.016,
+    "ir": -0.13,
+    "tstat": -1.95,
+    "posRatio": 0.477,
+    "dates": 220
+   },
+   "ic20": {
+    "mean": -0.024,
+    "ir": -0.2,
+    "tstat": -2.92,
+    "posRatio": 0.432,
+    "dates": 220
+   },
+   "ic40": {
+    "mean": -0.0287,
+    "ir": -0.25,
+    "tstat": -3.69,
+    "posRatio": 0.373,
+    "dates": 220
+   },
+   "dic20": 0.024,
+   "dicir20": 0.2,
+   "spread20": 0.55,
+   "spreadPosRatio": 0.582
+  },
+  "ushadow20": {
+   "name": "上影线占比(20日)",
+   "dir": "asc",
+   "kind": "candidate",
+   "ic5": {
+    "mean": -0.0119,
+    "ir": -0.15,
+    "tstat": -2.16,
+    "posRatio": 0.432,
+    "dates": 220
+   },
+   "ic10": {
+    "mean": -0.0169,
+    "ir": -0.2,
+    "tstat": -3.0,
+    "posRatio": 0.427,
+    "dates": 220
+   },
+   "ic20": {
+    "mean": -0.0179,
+    "ir": -0.22,
+    "tstat": -3.3,
+    "posRatio": 0.395,
+    "dates": 220
+   },
+   "ic40": {
+    "mean": -0.0185,
+    "ir": -0.25,
+    "tstat": -3.64,
+    "posRatio": 0.423,
+    "dates": 220
+   },
+   "dic20": 0.0179,
+   "dicir20": 0.22,
+   "spread20": -0.09,
+   "spreadPosRatio": 0.5
+  },
+  "lshadow20": {
+   "name": "下影线占比(20日)",
+   "dir": "desc",
+   "kind": "candidate",
+   "ic5": {
+    "mean": 0.0153,
+    "ir": 0.15,
+    "tstat": 2.24,
+    "posRatio": 0.568,
+    "dates": 220
+   },
+   "ic10": {
+    "mean": 0.0235,
+    "ir": 0.23,
+    "tstat": 3.42,
+    "posRatio": 0.645,
+    "dates": 220
+   },
+   "ic20": {
+    "mean": 0.0232,
+    "ir": 0.22,
+    "tstat": 3.32,
+    "posRatio": 0.627,
+    "dates": 220
+   },
+   "ic40": {
+    "mean": 0.0386,
+    "ir": 0.39,
+    "tstat": 5.8,
+    "posRatio": 0.664,
+    "dates": 220
+   },
+   "dic20": 0.0232,
+   "dicir20": 0.22,
+   "spread20": -0.14,
+   "spreadPosRatio": 0.505
+  },
+  "ret10": {
+   "name": "反转(10日)",
+   "dir": "asc",
+   "kind": "candidate",
+   "ic5": {
+    "mean": -0.0351,
+    "ir": -0.23,
+    "tstat": -3.34,
+    "posRatio": 0.432,
+    "dates": 220
+   },
+   "ic10": {
+    "mean": -0.0415,
+    "ir": -0.27,
+    "tstat": -3.98,
+    "posRatio": 0.418,
+    "dates": 220
+   },
+   "ic20": {
+    "mean": -0.0529,
+    "ir": -0.36,
+    "tstat": -5.39,
+    "posRatio": 0.373,
+    "dates": 220
+   },
+   "ic40": {
+    "mean": -0.0529,
+    "ir": -0.37,
+    "tstat": -5.42,
+    "posRatio": 0.368,
+    "dates": 220
+   },
+   "dic20": 0.0529,
+   "dicir20": 0.36,
+   "spread20": 0.63,
+   "spreadPosRatio": 0.555
+  },
+  "ret20": {
+   "name": "反转(20日)",
+   "dir": "asc",
+   "kind": "candidate",
+   "ic5": {
+    "mean": -0.0482,
+    "ir": -0.3,
+    "tstat": -4.42,
+    "posRatio": 0.414,
+    "dates": 220
+   },
+   "ic10": {
+    "mean": -0.0626,
+    "ir": -0.39,
+    "tstat": -5.82,
+    "posRatio": 0.4,
+    "dates": 220
+   },
+   "ic20": {
+    "mean": -0.0703,
+    "ir": -0.43,
+    "tstat": -6.33,
+    "posRatio": 0.364,
+    "dates": 220
+   },
+   "ic40": {
+    "mean": -0.0714,
+    "ir": -0.47,
+    "tstat": -6.96,
+    "posRatio": 0.345,
+    "dates": 220
+   },
+   "dic20": 0.0703,
+   "dicir20": 0.43,
+   "spread20": 0.8,
+   "spreadPosRatio": 0.564
+  },
+  "mom120": {
+   "name": "动量(120日)",
+   "dir": "desc",
+   "kind": "candidate",
+   "ic5": {
+    "mean": -0.0416,
+    "ir": -0.23,
+    "tstat": -3.44,
+    "posRatio": 0.386,
+    "dates": 220
+   },
+   "ic10": {
+    "mean": -0.0473,
+    "ir": -0.26,
+    "tstat": -3.91,
+    "posRatio": 0.427,
+    "dates": 220
+   },
+   "ic20": {
+    "mean": -0.0528,
+    "ir": -0.29,
+    "tstat": -4.24,
+    "posRatio": 0.391,
+    "dates": 220
+   },
+   "ic40": {
+    "mean": -0.0567,
+    "ir": -0.33,
+    "tstat": -4.84,
+    "posRatio": 0.386,
+    "dates": 220
+   },
+   "dic20": -0.0528,
+   "dicir20": -0.29,
+   "spread20": -0.52,
+   "spreadPosRatio": 0.436
+  },
+  "mom250": {
+   "name": "动量(250日)",
+   "dir": "desc",
+   "kind": "candidate",
+   "ic5": {
+    "mean": -0.0265,
+    "ir": -0.16,
+    "tstat": -2.42,
+    "posRatio": 0.418,
+    "dates": 220
+   },
+   "ic10": {
+    "mean": -0.0331,
+    "ir": -0.2,
+    "tstat": -2.98,
+    "posRatio": 0.459,
+    "dates": 220
+   },
+   "ic20": {
+    "mean": -0.0392,
+    "ir": -0.22,
+    "tstat": -3.33,
+    "posRatio": 0.436,
+    "dates": 220
+   },
+   "ic40": {
+    "mean": -0.0458,
+    "ir": -0.27,
+    "tstat": -4.05,
+    "posRatio": 0.418,
+    "dates": 220
+   },
+   "dic20": -0.0392,
+   "dicir20": -0.22,
+   "spread20": -0.35,
+   "spreadPosRatio": 0.482
+  },
+  "accel20": {
+   "name": "动量加速度(20日)",
+   "dir": "desc",
+   "kind": "candidate",
+   "ic5": {
+    "mean": -0.0258,
+    "ir": -0.19,
+    "tstat": -2.8,
+    "posRatio": 0.427,
+    "dates": 220
+   },
+   "ic10": {
+    "mean": -0.0334,
+    "ir": -0.26,
+    "tstat": -3.82,
+    "posRatio": 0.395,
+    "dates": 220
+   },
+   "ic20": {
+    "mean": -0.038,
+    "ir": -0.27,
+    "tstat": -4.07,
+    "posRatio": 0.409,
+    "dates": 220
+   },
+   "ic40": {
+    "mean": -0.0408,
+    "ir": -0.31,
+    "tstat": -4.54,
+    "posRatio": 0.395,
+    "dates": 220
+   },
+   "dic20": -0.038,
+   "dicir20": -0.27,
+   "spread20": -0.43,
+   "spreadPosRatio": 0.473
+  },
+  "rsi6": {
+   "name": "RSI(6日)",
+   "dir": "asc",
+   "kind": "candidate",
+   "ic5": {
+    "mean": -0.035,
+    "ir": -0.25,
+    "tstat": -3.69,
+    "posRatio": 0.427,
+    "dates": 220
+   },
+   "ic10": {
+    "mean": -0.0317,
+    "ir": -0.23,
+    "tstat": -3.42,
+    "posRatio": 0.436,
+    "dates": 220
+   },
+   "ic20": {
+    "mean": -0.032,
+    "ir": -0.25,
+    "tstat": -3.63,
+    "posRatio": 0.418,
+    "dates": 220
+   },
+   "ic40": {
+    "mean": -0.0253,
+    "ir": -0.2,
+    "tstat": -2.91,
+    "posRatio": 0.436,
+    "dates": 220
+   },
+   "dic20": 0.032,
+   "dicir20": 0.25,
+   "spread20": 0.38,
+   "spreadPosRatio": 0.518
+  },
+  "rsi12": {
+   "name": "RSI(12日)",
+   "dir": "asc",
+   "kind": "candidate",
+   "ic5": {
+    "mean": -0.0322,
+    "ir": -0.23,
+    "tstat": -3.47,
+    "posRatio": 0.427,
+    "dates": 220
+   },
+   "ic10": {
+    "mean": -0.0371,
+    "ir": -0.26,
+    "tstat": -3.81,
+    "posRatio": 0.423,
+    "dates": 220
+   },
+   "ic20": {
+    "mean": -0.0432,
+    "ir": -0.32,
+    "tstat": -4.79,
+    "posRatio": 0.377,
+    "dates": 220
+   },
+   "ic40": {
+    "mean": -0.0451,
+    "ir": -0.34,
+    "tstat": -5.08,
+    "posRatio": 0.395,
+    "dates": 220
+   },
+   "dic20": 0.0432,
+   "dicir20": 0.32,
+   "spread20": 0.4,
+   "spreadPosRatio": 0.541
+  },
+  "bias5": {
+   "name": "乖离率 BIAS(5日)",
+   "dir": "asc",
+   "kind": "candidate",
+   "ic5": {
+    "mean": -0.0417,
+    "ir": -0.29,
+    "tstat": -4.26,
+    "posRatio": 0.364,
+    "dates": 220
+   },
+   "ic10": {
+    "mean": -0.0344,
+    "ir": -0.25,
+    "tstat": -3.71,
+    "posRatio": 0.405,
+    "dates": 220
+   },
+   "ic20": {
+    "mean": -0.0349,
+    "ir": -0.25,
+    "tstat": -3.74,
+    "posRatio": 0.395,
+    "dates": 220
+   },
+   "ic40": {
+    "mean": -0.0256,
+    "ir": -0.2,
+    "tstat": -2.95,
+    "posRatio": 0.445,
+    "dates": 220
+   },
+   "dic20": 0.0349,
+   "dicir20": 0.25,
+   "spread20": 0.48,
+   "spreadPosRatio": 0.545
+  },
+  "bias20": {
+   "name": "乖离率 BIAS(20日)",
+   "dir": "asc",
+   "kind": "candidate",
+   "ic5": {
+    "mean": -0.0477,
+    "ir": -0.3,
+    "tstat": -4.52,
+    "posRatio": 0.368,
+    "dates": 220
+   },
+   "ic10": {
+    "mean": -0.0547,
+    "ir": -0.35,
+    "tstat": -5.18,
+    "posRatio": 0.4,
+    "dates": 220
+   },
+   "ic20": {
+    "mean": -0.0615,
+    "ir": -0.41,
+    "tstat": -6.11,
+    "posRatio": 0.364,
+    "dates": 220
+   },
+   "ic40": {
+    "mean": -0.0568,
+    "ir": -0.39,
+    "tstat": -5.79,
+    "posRatio": 0.368,
+    "dates": 220
+   },
+   "dic20": 0.0615,
+   "dicir20": 0.41,
+   "spread20": 0.77,
+   "spreadPosRatio": 0.568
+  },
+  "bias60": {
+   "name": "乖离率 BIAS(60日)",
+   "dir": "asc",
+   "kind": "candidate",
+   "ic5": {
+    "mean": -0.0592,
+    "ir": -0.33,
+    "tstat": -4.97,
+    "posRatio": 0.364,
+    "dates": 220
+   },
+   "ic10": {
+    "mean": -0.0696,
+    "ir": -0.39,
+    "tstat": -5.84,
+    "posRatio": 0.386,
+    "dates": 220
+   },
+   "ic20": {
+    "mean": -0.0777,
+    "ir": -0.44,
+    "tstat": -6.55,
+    "posRatio": 0.35,
+    "dates": 220
+   },
+   "ic40": {
+    "mean": -0.077,
+    "ir": -0.49,
+    "tstat": -7.21,
+    "posRatio": 0.332,
+    "dates": 220
+   },
+   "dic20": 0.0777,
+   "dicir20": 0.44,
+   "spread20": 0.84,
+   "spreadPosRatio": 0.545
+  },
+  "wr14": {
+   "name": "威廉指标 WR(14)",
+   "dir": "desc",
+   "kind": "candidate",
+   "ic5": {
+    "mean": 0.0209,
+    "ir": 0.15,
+    "tstat": 2.26,
+    "posRatio": 0.559,
+    "dates": 220
+   },
+   "ic10": {
+    "mean": 0.0226,
+    "ir": 0.16,
+    "tstat": 2.44,
+    "posRatio": 0.555,
+    "dates": 220
+   },
+   "ic20": {
+    "mean": 0.0262,
+    "ir": 0.21,
+    "tstat": 3.07,
+    "posRatio": 0.55,
+    "dates": 220
+   },
+   "ic40": {
+    "mean": 0.0233,
+    "ir": 0.18,
+    "tstat": 2.73,
+    "posRatio": 0.527,
+    "dates": 220
+   },
+   "dic20": 0.0262,
+   "dicir20": 0.21,
+   "spread20": 0.25,
+   "spreadPosRatio": 0.514
+  },
+  "cci14": {
+   "name": "CCI(14日)",
+   "dir": "asc",
+   "kind": "candidate",
+   "ic5": {
+    "mean": -0.0278,
+    "ir": -0.2,
+    "tstat": -2.99,
+    "posRatio": 0.45,
+    "dates": 220
+   },
+   "ic10": {
+    "mean": -0.0346,
+    "ir": -0.25,
+    "tstat": -3.67,
+    "posRatio": 0.395,
+    "dates": 220
+   },
+   "ic20": {
+    "mean": -0.0386,
+    "ir": -0.31,
+    "tstat": -4.56,
+    "posRatio": 0.382,
+    "dates": 220
+   },
+   "ic40": {
+    "mean": -0.0396,
+    "ir": -0.31,
+    "tstat": -4.57,
+    "posRatio": 0.377,
+    "dates": 220
+   },
+   "dic20": 0.0386,
+   "dicir20": 0.31,
+   "spread20": 0.37,
+   "spreadPosRatio": 0.55
+  },
+  "kdjj": {
+   "name": "KDJ-J 值",
+   "dir": "asc",
+   "kind": "candidate",
+   "ic5": {
+    "mean": -0.0239,
+    "ir": -0.18,
+    "tstat": -2.63,
+    "posRatio": 0.427,
+    "dates": 220
+   },
+   "ic10": {
+    "mean": -0.0189,
+    "ir": -0.14,
+    "tstat": -2.12,
+    "posRatio": 0.468,
+    "dates": 220
+   },
+   "ic20": {
+    "mean": -0.0185,
+    "ir": -0.15,
+    "tstat": -2.17,
+    "posRatio": 0.468,
+    "dates": 220
+   },
+   "ic40": {
+    "mean": -0.0146,
+    "ir": -0.12,
+    "tstat": -1.75,
+    "posRatio": 0.5,
+    "dates": 220
+   },
+   "dic20": 0.0185,
+   "dicir20": 0.15,
+   "spread20": 0.22,
+   "spreadPosRatio": 0.527
+  },
+  "bollb20": {
+   "name": "布林带位置 %B(20)",
+   "dir": "asc",
+   "kind": "candidate",
+   "ic5": {
+    "mean": -0.0335,
+    "ir": -0.23,
+    "tstat": -3.48,
+    "posRatio": 0.409,
+    "dates": 220
+   },
+   "ic10": {
+    "mean": -0.0395,
+    "ir": -0.27,
+    "tstat": -4.04,
+    "posRatio": 0.405,
+    "dates": 220
+   },
+   "ic20": {
+    "mean": -0.0444,
+    "ir": -0.33,
+    "tstat": -4.91,
+    "posRatio": 0.377,
+    "dates": 220
+   },
+   "ic40": {
+    "mean": -0.0447,
+    "ir": -0.33,
+    "tstat": -4.95,
+    "posRatio": 0.359,
+    "dates": 220
+   },
+   "dic20": 0.0444,
+   "dicir20": 0.33,
+   "spread20": 0.42,
+   "spreadPosRatio": 0.55
+  },
+  "macdh": {
+   "name": "MACD 柱(DIF-DEA)",
+   "dir": "desc",
+   "kind": "candidate",
+   "ic5": {
+    "mean": -0.0245,
+    "ir": -0.16,
+    "tstat": -2.38,
+    "posRatio": 0.45,
+    "dates": 220
+   },
+   "ic10": {
+    "mean": -0.0288,
+    "ir": -0.2,
+    "tstat": -2.91,
+    "posRatio": 0.409,
+    "dates": 220
+   },
+   "ic20": {
+    "mean": -0.0327,
+    "ir": -0.24,
+    "tstat": -3.58,
+    "posRatio": 0.386,
+    "dates": 220
+   },
+   "ic40": {
+    "mean": -0.0319,
+    "ir": -0.24,
+    "tstat": -3.56,
+    "posRatio": 0.427,
+    "dates": 220
+   },
+   "dic20": -0.0327,
+   "dicir20": -0.24,
+   "spread20": -0.35,
+   "spreadPosRatio": 0.432
+  },
+  "sharpe60": {
+   "name": "Sharpe(60日)",
+   "dir": "desc",
+   "kind": "candidate",
+   "ic5": {
+    "mean": -0.0491,
+    "ir": -0.31,
+    "tstat": -4.57,
+    "posRatio": 0.382,
+    "dates": 220
+   },
+   "ic10": {
+    "mean": -0.0569,
+    "ir": -0.37,
+    "tstat": -5.42,
+    "posRatio": 0.345,
+    "dates": 220
+   },
+   "ic20": {
+    "mean": -0.0616,
+    "ir": -0.39,
+    "tstat": -5.75,
+    "posRatio": 0.359,
+    "dates": 220
+   },
+   "ic40": {
+    "mean": -0.0666,
+    "ir": -0.47,
+    "tstat": -6.93,
+    "posRatio": 0.368,
+    "dates": 220
+   },
+   "dic20": -0.0616,
+   "dicir20": -0.39,
+   "spread20": -0.5,
+   "spreadPosRatio": 0.436
+  },
+  "high250": {
+   "name": "距 250 日高点",
+   "dir": "desc",
+   "kind": "candidate",
+   "ic5": {
+    "mean": -0.0147,
+    "ir": -0.08,
+    "tstat": -1.14,
+    "posRatio": 0.455,
+    "dates": 220
+   },
+   "ic10": {
+    "mean": -0.0139,
+    "ir": -0.07,
+    "tstat": -1.08,
+    "posRatio": 0.495,
+    "dates": 220
+   },
+   "ic20": {
+    "mean": -0.0134,
+    "ir": -0.07,
+    "tstat": -1.02,
+    "posRatio": 0.482,
+    "dates": 220
+   },
+   "ic40": {
+    "mean": -0.0042,
+    "ir": -0.02,
+    "tstat": -0.33,
+    "posRatio": 0.527,
+    "dates": 220
+   },
+   "dic20": -0.0134,
+   "dicir20": -0.07,
+   "spread20": -0.41,
+   "spreadPosRatio": 0.495
+  },
+  "low250": {
+   "name": "距 250 日低点",
+   "dir": "asc",
+   "kind": "candidate",
+   "ic5": {
+    "mean": -0.0442,
+    "ir": -0.26,
+    "tstat": -3.87,
+    "posRatio": 0.423,
+    "dates": 220
+   },
+   "ic10": {
+    "mean": -0.0551,
+    "ir": -0.33,
+    "tstat": -4.84,
+    "posRatio": 0.4,
+    "dates": 220
+   },
+   "ic20": {
+    "mean": -0.0641,
+    "ir": -0.36,
+    "tstat": -5.34,
+    "posRatio": 0.373,
+    "dates": 220
+   },
+   "ic40": {
+    "mean": -0.074,
+    "ir": -0.45,
+    "tstat": -6.72,
+    "posRatio": 0.377,
+    "dates": 220
+   },
+   "dic20": 0.0641,
+   "dicir20": 0.36,
+   "spread20": 0.18,
+   "spreadPosRatio": 0.518
+  },
+  "mabull": {
+   "name": "均线多头得分",
+   "dir": "desc",
+   "kind": "candidate",
+   "ic5": {
+    "mean": -0.0328,
+    "ir": -0.25,
+    "tstat": -3.77,
+    "posRatio": 0.405,
+    "dates": 220
+   },
+   "ic10": {
+    "mean": -0.0403,
+    "ir": -0.3,
+    "tstat": -4.52,
+    "posRatio": 0.377,
+    "dates": 220
+   },
+   "ic20": {
+    "mean": -0.0467,
+    "ir": -0.35,
+    "tstat": -5.17,
+    "posRatio": 0.355,
+    "dates": 220
+   },
+   "ic40": {
+    "mean": -0.0511,
+    "ir": -0.4,
+    "tstat": -5.93,
+    "posRatio": 0.377,
+    "dates": 220
+   },
+   "dic20": -0.0467,
+   "dicir20": -0.35,
+   "spread20": -0.34,
+   "spreadPosRatio": 0.455
+  },
+  "abovecnt": {
+   "name": "站上均线计数(5/10/20/60)",
+   "dir": "desc",
+   "kind": "candidate",
+   "ic5": {
+    "mean": -0.0408,
+    "ir": -0.32,
+    "tstat": -4.74,
+    "posRatio": 0.355,
+    "dates": 220
+   },
+   "ic10": {
+    "mean": -0.0421,
+    "ir": -0.33,
+    "tstat": -4.82,
+    "posRatio": 0.405,
+    "dates": 220
+   },
+   "ic20": {
+    "mean": -0.0423,
+    "ir": -0.35,
+    "tstat": -5.24,
+    "posRatio": 0.409,
+    "dates": 220
+   },
+   "ic40": {
+    "mean": -0.0397,
+    "ir": -0.34,
+    "tstat": -5.01,
+    "posRatio": 0.391,
+    "dates": 220
+   },
+   "dic20": -0.0423,
+   "dicir20": -0.35,
+   "spread20": -0.44,
+   "spreadPosRatio": 0.459
+  },
+  "consec": {
+   "name": "连续上涨天数",
+   "dir": "asc",
+   "kind": "candidate",
+   "ic5": {
+    "mean": -0.0253,
+    "ir": -0.25,
+    "tstat": -3.72,
+    "posRatio": 0.4,
+    "dates": 220
+   },
+   "ic10": {
+    "mean": -0.0203,
+    "ir": -0.21,
+    "tstat": -3.1,
+    "posRatio": 0.409,
+    "dates": 220
+   },
+   "ic20": {
+    "mean": -0.0213,
+    "ir": -0.22,
+    "tstat": -3.32,
+    "posRatio": 0.432,
+    "dates": 220
+   },
+   "ic40": {
+    "mean": -0.018,
+    "ir": -0.2,
+    "tstat": -3.0,
+    "posRatio": 0.45,
+    "dates": 220
+   },
+   "dic20": 0.0213,
+   "dicir20": 0.22,
+   "spread20": 0.33,
+   "spreadPosRatio": 0.559
+  },
+  "bigup20": {
+   "name": "暴涨计数(20日>5%)",
+   "dir": "asc",
+   "kind": "candidate",
+   "ic5": {
+    "mean": -0.056,
+    "ir": -0.45,
+    "tstat": -6.68,
+    "posRatio": 0.3,
+    "dates": 220
+   },
+   "ic10": {
+    "mean": -0.0695,
+    "ir": -0.59,
+    "tstat": -8.79,
+    "posRatio": 0.241,
+    "dates": 220
+   },
+   "ic20": {
+    "mean": -0.0811,
+    "ir": -0.67,
+    "tstat": -9.89,
+    "posRatio": 0.255,
+    "dates": 220
+   },
+   "ic40": {
+    "mean": -0.0959,
+    "ir": -0.86,
+    "tstat": -12.76,
+    "posRatio": 0.214,
+    "dates": 220
+   },
+   "dic20": 0.0811,
+   "dicir20": 0.67,
+   "spread20": 0.62,
+   "spreadPosRatio": 0.609
+  },
+  "bigdown20": {
+   "name": "暴跌计数(20日<-5%)",
+   "dir": "desc",
+   "kind": "candidate",
+   "ic5": {
+    "mean": -0.025,
+    "ir": -0.17,
+    "tstat": -2.5,
+    "posRatio": 0.386,
+    "dates": 220
+   },
+   "ic10": {
+    "mean": -0.0276,
+    "ir": -0.2,
+    "tstat": -2.93,
+    "posRatio": 0.364,
+    "dates": 220
+   },
+   "ic20": {
+    "mean": -0.0354,
+    "ir": -0.25,
+    "tstat": -3.75,
+    "posRatio": 0.341,
+    "dates": 220
+   },
+   "ic40": {
+    "mean": -0.0559,
+    "ir": -0.5,
+    "tstat": -7.38,
+    "posRatio": 0.264,
+    "dates": 220
+   },
+   "dic20": -0.0354,
+   "dicir20": -0.25,
+   "spread20": -0.11,
+   "spreadPosRatio": 0.436
+  },
+  "gap20": {
+   "name": "跳空计数(20日>|2%|)",
+   "dir": "asc",
+   "kind": "candidate",
+   "ic5": {
+    "mean": -0.0396,
+    "ir": -0.36,
+    "tstat": -5.3,
+    "posRatio": 0.309,
+    "dates": 220
+   },
+   "ic10": {
+    "mean": -0.0446,
+    "ir": -0.44,
+    "tstat": -6.53,
+    "posRatio": 0.323,
+    "dates": 220
+   },
+   "ic20": {
+    "mean": -0.048,
+    "ir": -0.47,
+    "tstat": -6.92,
+    "posRatio": 0.332,
+    "dates": 220
+   },
+   "ic40": {
+    "mean": -0.0507,
+    "ir": -0.56,
+    "tstat": -8.25,
+    "posRatio": 0.3,
+    "dates": 220
+   },
+   "dic20": 0.048,
+   "dicir20": 0.47,
+   "spread20": 0.21,
+   "spreadPosRatio": 0.545
+  },
+  "mlScore": {
+   "name": "ML 合成信号（梯度提升树）",
+   "dir": "desc",
+   "kind": "composite",
+   "ic5": null,
+   "ic10": null,
+   "ic40": null,
+   "ic20": {
+    "mean": 0.1012,
+    "ir": 0.69,
+    "tstat": null,
+    "posRatio": null,
+    "dates": 94
+   },
+   "dic20": 0.1012,
+   "dicir20": 0.69,
+   "spread20": null,
+   "spreadPosRatio": null
+  }
+ },
+ "history": [
+  {
+   "date": "2026-07-24",
+   "stocks": 5146,
+   "summary": "实测 20 个因子，方向化 IC20>0.02 且显著的有 7 个：量价背离 CPV、量能稳定度、候选·CPV(10日)、候选·CPV(60日)、候选·量能稳定(60日)、候选·反转(20日)、候选·收益偏度(20日)"
+  },
+  {
+   "date": "2026-07-24",
+   "stocks": 5146,
+   "summary": "实测 20 个因子，方向化 IC20>0.02 且显著的有 7 个：量价背离 CPV、量能稳定度、候选·CPV(10日)、候选·CPV(60日)、候选·量能稳定(60日)、候选·反转(20日)、候选·收益偏度(20日)"
+  },
+  {
+   "date": "2026-07-24",
+   "stocks": 0,
+   "factorCount": 0,
+   "summary": "实测 0 个因子，|IC20| 前 8：无"
+  },
+  {
+   "date": "2026-07-24",
+   "stocks": 5105,
+   "factorCount": 52,
+   "summary": "实测 52 个因子，|IC20| 前 8：量能稳定度(20日)、量能稳定度(60日)、量能比(20/60日)、乖离率 BIAS(60日)、量价背离 CPV(20日)、量价背离 CPV(10日)、Parkinson 波动率"
+  },
+  {
+   "date": "2026-07-25",
+   "stocks": 5105,
+   "factorCount": 52,
+   "summary": "实测 52 个因子，|IC20| 前 8：乖离率 BIAS(60日)、反转(20日)、暴涨计数(20日>5%)、量价背离 CPV(10日)、Parkinson 波动率、量价背离 CPV(20日)、日内振幅(20日均)"
+  },
+  {
+   "date": "2026-07-27",
+   "stocks": 5105,
+   "factorCount": 52,
+   "summary": "实测 52 个因子，|IC20| 前 8：低波动率(20日)、中期波动(60日)、暴涨计数(20日>5%)、乖离率 BIAS(60日)、长期波动(120日)、量价背离 CPV(20日)、量价背离 CPV(10日)"
+  },
+  {
+   "date": "2026-07-27",
+   "stocks": 5105,
+   "factorCount": 52,
+   "summary": "实测 52 个因子，|IC20| 前 8：低波动率(20日)、中期波动(60日)、暴涨计数(20日>5%)、乖离率 BIAS(60日)、长期波动(120日)、量价背离 CPV(20日)、量价背离 CPV(10日)"
+  },
+  {
+   "date": "2026-07-27",
+   "stocks": 5105,
+   "factorCount": 52,
+   "summary": "实测 52 个因子，|IC20| 前 8：低波动率(20日)、中期波动(60日)、暴涨计数(20日>5%)、乖离率 BIAS(60日)、长期波动(120日)、量价背离 CPV(20日)、量价背离 CPV(10日)"
+  }
+ ]
+}
