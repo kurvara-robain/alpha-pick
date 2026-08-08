@@ -79,7 +79,7 @@ function runPythonScript(scriptPath: string, args: string[], task: Task): void {
   task.message = '正在执行 Python 脚本…'
   saveTask(task)
 
-  const child = spawn('python3', [scriptPath, ...args], {
+  const child = spawn('/usr/bin/python3', [scriptPath, ...args], {
     cwd: process.cwd(),
     env: { ...process.env, PYTHONUNBUFFERED: '1' },
     timeout: 10 * 60 * 1000, // 10 分钟超时
@@ -250,7 +250,7 @@ export function taskApi(): Plugin {
           let params: Record<string, unknown> = {}
           try { params = JSON.parse(body) } catch { /* */ }
           const broker = (params.broker as string) ?? 'tushare'
-          const child = spawn('python3', [
+          const child = spawn('/usr/bin/python3', [
             path.resolve('scripts/broker_sync.py'), 'sync', '--broker', broker,
           ], { cwd: process.cwd(), env: { ...process.env, PYTHONUNBUFFERED: '1' }, timeout: 30000 })
           let stdout = ''
@@ -269,7 +269,7 @@ export function taskApi(): Plugin {
 
         // ── GET /api/broker/status ──
         if (url === '/api/broker/status' && req.method === 'GET') {
-          const child = spawn('python3', [path.resolve('scripts/broker_sync.py'), 'status'], {
+          const child = spawn('/usr/bin/python3', [path.resolve('scripts/broker_sync.py'), 'status'], {
             cwd: process.cwd(), env: { ...process.env, PYTHONUNBUFFERED: '1' }, timeout: 10000,
           })
           let stdout = ''
@@ -289,7 +289,7 @@ export function taskApi(): Plugin {
           const body = await readBody(req)
           let params: Record<string, unknown> = {}
           try { params = JSON.parse(body) } catch { /* */ }
-          const child = spawn('python3', [
+          const child = spawn('/usr/bin/python3', [
             path.resolve('scripts/broker_sync.py'), 'config',
             '--broker', (params.type as string) ?? 'tushare',
             '--token', (params.token as string) ?? '',

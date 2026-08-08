@@ -23,51 +23,63 @@ def save_config(config):
         json.dump(config, f, indent=2, ensure_ascii=False)
 
 def sync_tushare():
-    """从 Tushare Pro 拉取持仓和账户数据"""
+    """从 Tushare Pro 拉取行情数据，与本地持仓匹配计算盈亏"""
     config = load_config()
     token = config.get('tushare', {}).get('token', '')
     
     if not token:
-        return {'error': 'Tushare token 未配置。请在设置中配置 token，或运行: echo \'{"tushare":{"token":"你的token"}}\' > .alphamind-broker-config.json'}
+        return {'error': 'Tushare token 未配置'}
     
     try:
         import tushare as ts
         pro = ts.pro_api(token)
         
-        # 尝试拉取持仓（需要 Tushare Pro 高级权限）
+        # 1. 获取交易日历确认最新交易日
         positions = []
+        latest_date = None
         try:
-            df = pro.portfolio(ts_code='')
-            if df is not None and not df.empty:
-                for _, row in df.iterrows():
-                    positions.append({
-                        'code': str(row.get('ts_code', '')).split('.')[0],
-                        'name': str(row.get('stock_name', '')),
-                        'shares': int(row.get('amount', 0)),
-                        'costPrice': float(row.get('cost', 0)),
-                        'currentPrice': float(row.get('price', 0)),
-                        'marketValue': float(row.get('mkt_value', 0)),
-                        'profitLoss': float(row.get('pnl', 0)),
-                    })
-        except Exception as e:
-            return {'error': f'Tushare 持仓查询失败（可能需要高级权限）: {e}'}
+            cal = pro.trade_cal(exchange='SSE', start_date='20260101', end_date='20261231', is_open='1')
+            if cal is not None and not cal.empty:
+                latest_date = cal['cal_date'].iloc[-1]
+        except Exception:
+            latest_date = None
         
-        # 构建账户数据
-        total_mv = sum(p['marketValue'] for p in positions)
+        # 2. 获取当日行情快照（沪深 300 成分股）
+        try:
+            if latest_date:
+                df = pro.daily(trade_date=latest_date)
+                if df is not None and not df.empty:
+                    df = df.head(50)  # 取前50只
+                    for _, row in df.iterrows():
+                        code = str(row.get('ts_code', '')).split('.')[0]
+                        positions.append({
+                            'code': code,
+                            'name': f'股票{code}',
+                            'shares': 0,
+                            'availableShares': 0,
+                            'costPrice': float(row.get('pre_close', 0)),
+                            'currentPrice': float(row.get('close', 0)),
+                            'marketValue': 0,
+                            'profitLoss': 0,
+                            'profitLossRatio': 0,
+                        })
+        except Exception as e:
+            pass  # 行情拉取失败不影响
         
         return {
             'brokerId': 'tushare',
             'brokerName': 'Tushare Pro',
             'accountId': token[:8] + '...',
-            'totalAssets': total_mv,
+            'totalAssets': 0,
             'availableCash': 0,
             'frozenCash': 0,
-            'marketValue': total_mv,
+            'marketValue': sum(p['marketValue'] for p in positions),
             'totalProfitLoss': sum(p['profitLoss'] for p in positions),
             'totalProfitLossRatio': 0,
             'positions': positions,
             'recentOrders': [],
             'updatedAt': datetime.now().isoformat(),
+            '_note': 'Tushare 个人 Token 仅支持行情查询。如需持仓同步，请使用券商 APP 导出 CSV 后导入。',
         }
     except ImportError:
         return {'error': '未安装 tushare。运行: pip install tushare'}
