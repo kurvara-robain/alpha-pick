@@ -28,6 +28,7 @@ import { fmtNum, fmtPct, pctColor } from '@/lib/format'
 import type { ChanAnalysis, DiagnosisAdvice, Holding } from '@/lib/types'
 import { cn } from '@/lib/utils'
 import CSVImport from '@/components/CSVImport'
+import BrokerPanel from '@/components/BrokerPanel'
 import { PortfolioRisk, LazyLoader } from '@/components/LazyComponents'
 
 function useDB() {
@@ -627,6 +628,8 @@ export default function HoldingsPage() {  const db = useDB()
           ))}
         </div>
       )}
+
+      <BrokerPanel />
 
       <LazyLoader><PortfolioRisk /></LazyLoader>
     </div>

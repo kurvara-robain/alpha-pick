@@ -244,6 +244,66 @@ export function taskApi(): Plugin {
           return
         }
 
+        // ── POST /api/broker/sync ──
+        if (url === '/api/broker/sync' && req.method === 'POST') {
+          const body = await readBody(req)
+          let params: Record<string, unknown> = {}
+          try { params = JSON.parse(body) } catch { /* */ }
+          const broker = (params.broker as string) ?? 'tushare'
+          const child = spawn('python3', [
+            path.resolve('scripts/broker_sync.py'), 'sync', '--broker', broker,
+          ], { cwd: process.cwd(), env: { ...process.env, PYTHONUNBUFFERED: '1' }, timeout: 30000 })
+          let stdout = ''
+          child.stdout?.on('data', (d: Buffer) => { stdout += d.toString() })
+          child.on('close', (code) => {
+            if (code === 0) {
+              try { json(res, 200, JSON.parse(stdout)) }
+              catch { json(res, 500, { error: 'parse error' }) }
+            } else {
+              json(res, 500, { error: stdout || `exit ${code}` })
+            }
+          })
+          child.on('error', (err) => json(res, 500, { error: err.message }))
+          return
+        }
+
+        // ── GET /api/broker/status ──
+        if (url === '/api/broker/status' && req.method === 'GET') {
+          const child = spawn('python3', [path.resolve('scripts/broker_sync.py'), 'status'], {
+            cwd: process.cwd(), env: { ...process.env, PYTHONUNBUFFERED: '1' }, timeout: 10000,
+          })
+          let stdout = ''
+          child.stdout?.on('data', (d: Buffer) => { stdout += d.toString() })
+          child.on('close', (code) => {
+            if (code === 0) {
+              try { json(res, 200, JSON.parse(stdout)) }
+              catch { json(res, 200, []) }
+            } else { json(res, 200, []) }
+          })
+          child.on('error', () => json(res, 200, []))
+          return
+        }
+
+        // ── POST /api/broker/config ──
+        if (url === '/api/broker/config' && req.method === 'POST') {
+          const body = await readBody(req)
+          let params: Record<string, unknown> = {}
+          try { params = JSON.parse(body) } catch { /* */ }
+          const child = spawn('python3', [
+            path.resolve('scripts/broker_sync.py'), 'config',
+            '--broker', (params.type as string) ?? 'tushare',
+            '--token', (params.token as string) ?? '',
+          ], { cwd: process.cwd(), env: { ...process.env, PYTHONUNBUFFERED: '1' }, timeout: 10000 })
+          let stdout = ''
+          child.stdout?.on('data', (d: Buffer) => { stdout += d.toString() })
+          child.on('close', () => {
+            try { json(res, 200, JSON.parse(stdout || '{}')) }
+            catch { json(res, 200, { ok: true }) }
+          })
+          child.on('error', (err) => json(res, 500, { error: err.message }))
+          return
+        }
+
         // ── GET /api/tasks/:id ──
         const taskMatch = url.match(/^\/api\/tasks\/([a-z0-9-]+)$/)
         if (taskMatch && req.method === 'GET') {
