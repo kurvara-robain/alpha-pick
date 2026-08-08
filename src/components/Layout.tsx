@@ -10,6 +10,7 @@ import {
   SlidersHorizontal,
   Wallet,
   FileSearch,
+  TrendingUp,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Toaster } from '@/components/ui/sonner'
@@ -24,6 +25,7 @@ export const NAV_ITEMS = [
   { to: '/holdings', label: '持仓诊股', icon: Wallet },
   { to: '/reports', label: '研究报告', icon: Newspaper },
   { to: '/research', label: '个股投研', icon: FileSearch },
+  { to: '/simtrade', label: '模拟交易', icon: TrendingUp },
 ] as const
 
 export default function Layout() {
