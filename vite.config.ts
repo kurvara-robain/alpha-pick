@@ -5,6 +5,7 @@ import { defineConfig } from "vite"
 import type { Plugin } from "vite"
 import { inspectAttr } from 'kimi-plugin-inspect-react'
 import { refreshApi } from "./vite-plugins/refresh-api"
+import { taskApi } from "./vite-plugins/task-api"
 
 // 本地同步中间件：把前端持仓持久化到项目根目录 .alphamind-sync.json，
 // 供缠论信号监控自动化读取（原子写入：先写临时文件再 rename）。
@@ -67,7 +68,7 @@ function alphamindSync(): Plugin {
 // https://vite.dev/config/
 export default defineConfig({
   base: './',
-  plugins: [inspectAttr(), react(), alphamindSync(), refreshApi()],
+  plugins: [inspectAttr(), react(), alphamindSync(), refreshApi(), taskApi()],
   server: {
     port: 7200,
   },

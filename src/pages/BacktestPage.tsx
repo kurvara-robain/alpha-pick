@@ -27,6 +27,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { runBacktest } from '@/lib/api'
+import { submitBacktest, pollTask } from '@/lib/taskClient'
 import { fmtNum, fmtPct, pctColor } from '@/lib/format'
 import { getDB, subscribeDB, updateDB } from '@/lib/store'
 import type { DB } from '@/lib/store'
@@ -222,6 +223,12 @@ export default function BacktestPage() {
   const [runError, setRunError] = useState('')
   const [result, setResult] = useState<BacktestResult | null>(null)
 
+  // 研究级回测
+  const [researchTaskId, setResearchTaskId] = useState('')
+  const [researchProgress, setResearchProgress] = useState(0)
+  const [researchStatus, setResearchStatus] = useState('')
+  const [researchRunning, setResearchRunning] = useState(false)
+
   // 组合名自动生成：如「低估值价值策略 × ROC-20动量 等3因子」
   const moduleName = useMemo(() => {
     const sns = db.strategies.filter((s) => strategyIds.includes(s.id)).map((s) => s.name)
@@ -252,6 +259,40 @@ export default function BacktestPage() {
       setRunError(e instanceof Error ? e.message : '回测运行失败，请稍后重试')
     } finally {
       setRunning(false)
+    }
+  }
+
+  const handleResearchRun = async () => {
+    setResearchRunning(true)
+    setResearchProgress(0)
+    setResearchStatus('提交中…')
+    try {
+      const { taskId } = await submitBacktest({
+        strategyIds, factorIds, startDate, endDate,
+        rebalance, topN: 25,
+      })
+      setResearchTaskId(taskId)
+      pollTask(taskId,
+        (task) => { setResearchProgress(task.progress); setResearchStatus(task.message) },
+        (task) => {
+          setResearchRunning(false)
+          if (task.status === 'completed') {
+            setResearchStatus('✓ 研究级回测完成')
+            // 尝试加载产物
+            fetch(`/data/research-backtest-${taskId}.json`)
+              .then((r) => r.json())
+              .then((data) => {
+                setResult({ ...data, credibility: 'research', id: taskId, config: { moduleName, strategyIds, factorIds, startDate, endDate, rebalance, capital: Number(capital) || 0 } } as BacktestResult)
+              })
+              .catch(() => setResearchStatus('产物加载失败'))
+          } else {
+            setResearchStatus('✗ 回测失败: ' + (task.error ?? '未知错误'))
+          }
+        },
+      )
+    } catch (e) {
+      setResearchRunning(false)
+      setResearchStatus('提交失败: ' + (e instanceof Error ? e.message : String(e)))
     }
   }
 
@@ -390,6 +431,15 @@ export default function BacktestPage() {
           >
             {running ? <Loader2 className="size-4 animate-spin" /> : <Play className="size-4" />}
             {running ? '回测引擎逐期滚动计算中…' : '运行回测'}
+          </Button>
+          <Button
+            onClick={handleResearchRun}
+            disabled={researchRunning || (strategyIds.length === 0 && factorIds.length === 0)}
+            className="bg-blue-600 text-white hover:bg-blue-700"
+            title="提交到 Python 后端执行事件驱动回测（含 T+1/涨跌停/费用）"
+          >
+            {researchRunning ? <Loader2 className="size-4 animate-spin" /> : <Play className="size-4" />}
+            {researchRunning ? `${researchStatus} ${researchProgress}%` : '🔬 研究级回测'}
           </Button>
         </div>
       </div>

@@ -27,6 +27,7 @@ import { useAsync } from '@/lib/useAsync'
 import { fmtNum, fmtPct, pctColor } from '@/lib/format'
 import type { ChanAnalysis, DiagnosisAdvice, Holding } from '@/lib/types'
 import { cn } from '@/lib/utils'
+import CSVImport from '@/components/CSVImport'
 import { PortfolioRisk, LazyLoader } from '@/components/LazyComponents'
 
 function useDB() {
@@ -600,6 +601,24 @@ export default function HoldingsPage() {  const db = useDB()
           <Briefcase className="mx-auto h-8 w-8 text-gray-300" />
           <p className="mt-3 text-sm text-gray-500">还没有持仓记录</p>
           <p className="mt-1 text-xs text-gray-400">通过上方表单录入您的持仓，即可进行技术诊断</p>
+
+          <div className="mt-6">
+            <CSVImport onImported={(data) => {
+              const holdings = data.rows
+                .filter((r) => r.code && r.name)
+                .map((r) => ({
+                  id: `csv-${Date.now()}-${Math.random().toString(36).slice(2,6)}`,
+                  code: r.code, name: r.name,
+                  cost: parseFloat(r.cost || r['成本价'] || '0'),
+                  shares: parseInt(r.shares || r['持仓'] || '0'),
+                  addedAt: new Date().toISOString(),
+                }))
+                .filter((h) => h.shares > 0)
+              if (holdings.length > 0) {
+                updateDB((db) => { db.holdings.push(...holdings) })
+              }
+            }} />
+          </div>
         </div>
       ) : (
         <div className="space-y-3">
