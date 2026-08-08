@@ -15,7 +15,7 @@ import { getDB } from '@/lib/store'
 import { buildDataVersion } from '@/lib/versionMetadata'
 import Sparkline from '@/components/Sparkline'
 import { getAlerts, checkSignalChanges, requestNotificationPermission, markAlertsRead } from '@/lib/alerts'
-import { useEffect, useState } from 'react'
+import { useEffect } from 'react'
 
 export default function HomePage() {
   const indicesState = useAsync(loadIndices)
