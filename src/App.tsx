@@ -4,6 +4,7 @@ import Layout from './components/Layout'
 import ErrorBoundary from './components/ErrorBoundary'
 import { mergeCollectedFactors } from './lib/store'
 import MarketPage from './pages/MarketPage'
+import HomePage from './pages/HomePage'
 import StrategiesPage from './pages/StrategiesPage'
 import FactorsPage from './pages/FactorsPage'
 import WorkbenchPage from './pages/WorkbenchPage'
@@ -14,16 +15,13 @@ import ReportsPage from './pages/ReportsPage'
 import ResearchPage from './pages/ResearchPage'
 
 export default function App() {
-  // 应用初始化时合并联网收集因子进因子库（幂等、只追加；有变更时派发事件驱动页面刷新）
-  useEffect(() => {
-    void mergeCollectedFactors()
-  }, [])
+  useEffect(() => { void mergeCollectedFactors() }, [])
 
   return (
     <ErrorBoundary>
     <Routes>
       <Route element={<Layout />}>
-        <Route path="/" element={<Navigate to="/market" replace />} />
+        <Route path="/" element={<HomePage />} />
         <Route path="/market" element={<MarketPage />} />
         <Route path="/strategies" element={<StrategiesPage />} />
         <Route path="/factors" element={<FactorsPage />} />
