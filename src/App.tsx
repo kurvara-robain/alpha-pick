@@ -1,6 +1,7 @@
 import { useEffect } from 'react'
 import { Navigate, Route, Routes } from 'react-router'
 import Layout from './components/Layout'
+import ErrorBoundary from './components/ErrorBoundary'
 import { mergeCollectedFactors } from './lib/store'
 import MarketPage from './pages/MarketPage'
 import StrategiesPage from './pages/StrategiesPage'
@@ -10,6 +11,7 @@ import WatchlistPage from './pages/WatchlistPage'
 import BacktestPage from './pages/BacktestPage'
 import HoldingsPage from './pages/HoldingsPage'
 import ReportsPage from './pages/ReportsPage'
+import ResearchPage from './pages/ResearchPage'
 
 export default function App() {
   // 应用初始化时合并联网收集因子进因子库（幂等、只追加；有变更时派发事件驱动页面刷新）
@@ -18,6 +20,7 @@ export default function App() {
   }, [])
 
   return (
+    <ErrorBoundary>
     <Routes>
       <Route element={<Layout />}>
         <Route path="/" element={<Navigate to="/market" replace />} />
@@ -29,8 +32,10 @@ export default function App() {
         <Route path="/backtest" element={<BacktestPage />} />
         <Route path="/holdings" element={<HoldingsPage />} />
         <Route path="/reports" element={<ReportsPage />} />
+        <Route path="/research" element={<ResearchPage />} />
         <Route path="*" element={<Navigate to="/market" replace />} />
       </Route>
     </Routes>
+    </ErrorBoundary>
   )
 }

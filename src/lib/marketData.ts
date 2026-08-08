@@ -297,12 +297,15 @@ export function loadCollectedFactors(): Promise<CollectedFactor[]> {
 // ── 适配层：universe.json → UI 侧消费的 Stock 形状 ─────────────
 
 function buildAiText(u: UniverseStock): string {
+  const mktCap = u.mktCap != null ? `${u.mktCap.toLocaleString('zh-CN')} 亿` : '—'
+  const pe = u.pe > 0 ? `${u.pe} 倍` : '—'
+  const pb = u.pb > 0 ? `${u.pb} 倍` : '—'
   return (
-    `${u.name} 最新价 ${u.price} 元，当日涨跌幅 ${u.changePct}%。` +
-    `近 20 日动量 ${u.mom20.toFixed(1)}%，近 60 日动量 ${u.mom60.toFixed(1)}%，` +
-    `现价处于 60 日区间 ${u.pos60}% 分位，现价${u.aboveMa20 ? '站上' : '跌破'} 20 日均线。` +
-    `PE(TTM) ${u.pe} 倍，PB ${u.pb} 倍，总市值约 ${u.mktCap.toLocaleString('zh-CN')} 亿元。` +
-    `演示模型综合评分 ${u.aiScore}/100，信号「${u.signal}」。`
+    `${u.name} 最新价 ${u.price ?? '—'} 元，当日涨跌幅 ${u.changePct ?? 0}%。` +
+    `近 20 日动量 ${u.mom20?.toFixed(1) ?? '—'}%，近 60 日动量 ${u.mom60?.toFixed(1) ?? '—'}%，` +
+    `现价处于 60 日区间 ${u.pos60 ?? '—'}% 分位，现价${u.aboveMa20 ? '站上' : '跌破'} 20 日均线。` +
+    `PE(TTM) ${pe}，PB ${pb}，总市值约 ${mktCap}。` +
+    `演示模型综合评分 ${u.aiScore ?? '—'}/100，信号「${u.signal ?? '—'}」。`
   )
 }
 

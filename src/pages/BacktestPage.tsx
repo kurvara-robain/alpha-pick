@@ -71,7 +71,23 @@ function ResultView({ result }: { result: BacktestResult }) {
   ]
   return (
     <div className="space-y-4">
-      {/* 口径说明（显著位置） */}
+      {/* 可信度标记 */}
+      <div className="flex items-center gap-2">
+        {result.credibility === 'research' ? (
+          <Badge variant="outline" className="border-blue-400 bg-blue-50 text-blue-700 gap-1">
+            <span className="text-[10px]">🔬</span> 研究级回测
+          </Badge>
+        ) : (
+          <Badge variant="outline" className="border-amber-400 bg-amber-50 text-amber-700 gap-1">
+            <span className="text-[10px]">⚡</span> 快速模拟
+          </Badge>
+        )}
+        {result.dataVersion && (
+          <span className="text-[10px] text-gray-400">数据版本: {result.dataVersion}</span>
+        )}
+      </div>
+
+      {/* 口径说明 */}
       <div className="flex items-start gap-2 rounded-xl border border-amber-500/30 bg-amber-500/5 p-3 text-xs leading-relaxed text-amber-200/90">
         <Info className="mt-0.5 size-3.5 shrink-0 text-amber-400" />
         <span>

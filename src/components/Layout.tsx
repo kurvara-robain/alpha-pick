@@ -9,6 +9,7 @@ import {
   Newspaper,
   SlidersHorizontal,
   Wallet,
+  FileSearch,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Toaster } from '@/components/ui/sonner'
@@ -22,6 +23,7 @@ export const NAV_ITEMS = [
   { to: '/backtest', label: '回测分析', icon: BarChart3 },
   { to: '/holdings', label: '持仓诊股', icon: Wallet },
   { to: '/reports', label: '研究报告', icon: Newspaper },
+  { to: '/research', label: '个股投研', icon: FileSearch },
 ] as const
 
 export default function Layout() {

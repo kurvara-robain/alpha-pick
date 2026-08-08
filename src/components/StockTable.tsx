@@ -112,7 +112,7 @@ export default function StockTable({ stocks, watchlist, onToggleWatch, onSelect,
                   </div>
                 </td>
                 <td className="px-4 py-3">
-                  <div className="font-mono tabular-nums text-gray-800">{s.price.toFixed(2)}</div>
+                  <div className="font-mono tabular-nums text-gray-800">{s.price?.toFixed(2) ?? '—'}</div>
                   <div className={`font-mono text-xs tabular-nums ${pctColor(s.changePct)}`}>{fmtPct(s.changePct)}</div>
                 </td>
                 <td className="px-4 py-3">

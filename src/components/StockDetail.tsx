@@ -46,7 +46,7 @@ export default function StockDetail({ stock, onClose }: StockDetailProps) {
               </div>
               <SheetDescription className="flex items-baseline gap-3 text-gray-500">
                 <span className="font-mono text-2xl font-bold tabular-nums text-gray-900">
-                  {stock.price.toFixed(2)}
+                  {stock.price?.toFixed(2) ?? '—'}
                 </span>
                 <span className={`font-mono tabular-nums ${pctColor(stock.changePct)}`}>
                   {fmtPct(stock.changePct)}
@@ -103,9 +103,9 @@ export default function StockDetail({ stock, onClose }: StockDetailProps) {
             {/* 关键指标 */}
             <div className="mt-6 grid grid-cols-3 gap-2 sm:grid-cols-5">
               {[
-                { label: '总市值', value: `${stock.mktCap.toLocaleString()}亿` },
-                { label: 'PE(TTM)', value: stock.pe.toFixed(1) },
-                { label: 'PB', value: stock.pb.toFixed(1) },
+                { label: '总市值', value: stock.mktCap != null ? `${stock.mktCap.toLocaleString()}亿` : '—' },
+                { label: 'PE(TTM)', value: stock.pe > 0 ? stock.pe.toFixed(1) : '—' },
+                { label: 'PB', value: stock.pb > 0 ? stock.pb.toFixed(1) : '—' },
                 stock.roe != null
                   ? { label: 'ROE', value: `${stock.roe}%` }
                   : { label: '60日位置', value: `${stock.pos60 ?? '—'}%` },

@@ -88,6 +88,8 @@ export interface BacktestPeriod {
   picks: string[] // 该期选出的股票名称
 }
 
+export type BacktestCredibility = 'simulation' | 'research'
+
 export interface BacktestResult {
   id: string
   config: BacktestConfig
@@ -95,6 +97,8 @@ export interface BacktestResult {
   curve: { date: string; strategy: number; benchmark: number }[] // 净值曲线
   periods: BacktestPeriod[] // 历史各期选股池回放
   createdAt: string
+  credibility: BacktestCredibility // 快速模拟 vs 研究级
+  dataVersion?: string // 研究级回测的数据批次版本
 }
 
 export type DiagnosisAdvice = '继续持有' | '卖出' | '等待观察'

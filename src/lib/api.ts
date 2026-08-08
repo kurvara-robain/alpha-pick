@@ -276,7 +276,7 @@ export async function runScreening(strategyIds: string[], factorIds: string[]): 
     // 因子贡献：动量/低波等作为加分项写进入选原因（无 rule 的旧因子保持原行为）
     for (const f of factors) {
       if (f.rule) continue // 带 rule 的因子已在上方作为过滤条件处理
-      if (f.category === '动量' && s.mom20 > 3) hitBy.push(`因子「${f.name}」：20 日动量 ${s.mom20.toFixed(1)}%`)
+      if (f.category === '动量' && s.mom20 > 3) hitBy.push(`因子「${f.name}」：20 日动量 ${(s.mom20 ?? 0).toFixed(1)}%`)
       if (f.category === '价值' && s.pe > 0 && s.pe < 25) hitBy.push(`因子「${f.name}」：PE(TTM) ${s.pe} 倍`)
       if (f.category === '波动' && s.turnover < 2) hitBy.push(`因子「${f.name}」：低换手 ${s.turnover}%`)
       if (f.category === '资金流' && s.factors.includes('资金流')) hitBy.push(`因子「${f.name}」：资金面命中`)
@@ -453,6 +453,7 @@ export async function runBacktest(config: BacktestConfig): Promise<BacktestResul
   return {
     id: uid(),
     config,
+    credibility: 'simulation',
     metrics: {
       totalReturn: Number(totalReturn.toFixed(1)),
       annualReturn: Number(annualReturn.toFixed(1)),
