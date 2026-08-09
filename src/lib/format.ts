@@ -1,7 +1,7 @@
 // A 股配色约定：红涨绿跌
 export function pctColor(pct: number): string {
-  if (pct > 0) return 'text-rose-400'
-  if (pct < 0) return 'text-emerald-400'
+  if (pct > 0) return 'text-red-500'
+  if (pct < 0) return 'text-green-500'
   return 'text-gray-500'
 }
 

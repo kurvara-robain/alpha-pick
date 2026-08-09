@@ -24,7 +24,9 @@ interface WatchlistPanelProps {
   selectedForScan?: string[]
 }
 
-export default function WatchlistPanel({ universe = [], onSelectForScan, selectedForScan = [] }: WatchlistPanelProps) {
+const EMPTY_UNIVERSE: { code: string; name?: string; price: number; changePct: number }[] = []
+
+export default function WatchlistPanel({ universe = EMPTY_UNIVERSE, onSelectForScan, selectedForScan = [] }: WatchlistPanelProps) {
   const [expanded, setExpanded] = useState(true)
   const [stocks, setStocks] = useState<TrackedStock[]>([])
   const [snapshots, setSnapshots] = useState<TrackedStockSnapshot[]>([])

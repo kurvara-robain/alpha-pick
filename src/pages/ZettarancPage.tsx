@@ -1,730 +1,169 @@
 // ─────────────────────────────────────────────────────────────
-// Zettaranc 知行决策仪表盘 v3
-// Bloomberg 风格 7 步闭环 + 实时扫描 + 知识库引用
+// 知行体系 — 极简版
+// 选范围 → 扫描 → 看结果。没有多余的东西。
 // ─────────────────────────────────────────────────────────────
 import { useEffect, useState, useCallback } from 'react'
-import { TrendingUp, TrendingDown, Minus, AlertTriangle, Shield, Target, Eye, Zap, BarChart3, Gauge, Activity, BookOpen, ChevronDown, ChevronUp, Loader2, ListChecks } from 'lucide-react'
-import { Card } from '@/components/ui/card'
+import { Loader2, Activity } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
+import { Card } from '@/components/ui/card'
 import { cn } from '@/lib/utils'
-import { computeZettarancFactors, type ZettarancFactors, type KlineData } from '@/lib/zettarancFactors'
-import { generateNarrative, getKnowledgeCards, getConceptByName, type KnowledgeCard } from '@/lib/zettarancKnowledge'
-import WatchlistPanel from '@/components/WatchlistPanel'
-import { getWatchlist, addToWatchlist, removeFromWatchlist } from '@/lib/watchlistStore'
 import { fmtNum } from '@/lib/format'
+import { computeZettarancFactors, type ZettarancFactors, type KlineData } from '@/lib/zettarancFactors'
+import { getWatchlist } from '@/lib/watchlistStore'
+import { getKnowledgeCards } from '@/lib/zettarancKnowledge'
+import type { KnowledgeCard } from '@/lib/zettarancKnowledge'
 
-// ═══════════════════════════════════════════════════════════════
-// 类型
-// ═══════════════════════════════════════════════════════════════
+const SAMPLE_CODES = [
+  '600519.SH','000858.SZ','601318.SH','600036.SH','000333.SZ','600276.SH','000651.SZ','601398.SH','600900.SH','000002.SZ',
+  '002415.SZ','300750.SZ','603259.SH','600809.SH','000568.SZ','002475.SZ','300124.SZ','601012.SH','688981.SH','002230.SZ',
+  '300059.SZ','002049.SZ','600570.SH','300033.SZ','000977.SZ','688008.SH','300502.SZ','002371.SZ','603501.SH','300782.SZ',
+]
 
-interface StepData {
-  status: 'bullish' | 'bearish' | 'neutral' | 'alert'
-  signal: string
-  detail: string
-  value?: string
-}
+type ScanEntry = { code: string; factors: ZettarancFactors }
 
-interface ScanResult {
-  code: string
-  factors: ZettarancFactors
-}
-
-// ═══════════════════════════════════════════════════════════════
-// K线加载器 — 从 public/data/kline/ 采样 N 只股票
-// ═══════════════════════════════════════════════════════════════
-
-function statusColor(s: StepData['status']): string {
-  switch (s) {
-    case 'bullish': return 'text-emerald-600 bg-emerald-50 border-emerald-200'
-    case 'bearish': return 'text-rose-600 bg-rose-50 border-rose-200'
-    case 'alert': return 'text-amber-600 bg-amber-50 border-amber-200'
-    default: return 'text-slate-500 bg-slate-50 border-slate-200'
-  }
-}
-
-function statusIcon(s: StepData['status']) {
-  const cls = 'h-4 w-4'
-  switch (s) {
-    case 'bullish': return <TrendingUp className={cn(cls, 'text-emerald-500')} />
-    case 'bearish': return <TrendingDown className={cn(cls, 'text-rose-500')} />
-    case 'alert': return <AlertTriangle className={cn(cls, 'text-amber-500')} />
-    default: return <Minus className={cn(cls, 'text-slate-400')} />
-  }
-}
-
-/** 从批量扫描结果聚合统计 */
-function aggregateStats(results: ScanResult[]) {
-  if (results.length === 0) return null
-
-  let totalScore = 0, b1Count = 0, s1Count = 0, anomalyCount = 0
-  let superB1Count = 0, b2Count = 0, sb1Count = 0, shaofuCount = 0, kengkouCount = 0
-  let sqCount = 0, dszCount = 0, dkCount = 0
-  let bullCount = 0, bearCount = 0
-  let totalVolRatio = 0, totalDivCons = 0
-
-  for (const r of results) {
-    const f = r.factors
-    totalScore += f.zettarancScore
-    if (f.isB1Signal) b1Count++
-    if (f.isSuperB1) superB1Count++
-    if (f.isB2Signal) b2Count++
-    if (f.isSB1Signal) sb1Count++
-    if (f.isShuangqiang) sqCount++
-    if (f.isS1Signal) s1Count++
-    if (f.isDSZSignal) dszCount++
-    if (f.isDeathKline) dkCount++
-    if (f.isAnomaly) anomalyCount++
-    if (f.isShaofuCandidate) shaofuCount++
-    if (f.isKengkouCandidate) kengkouCount++
-    if (f.marketTimingSignal === 1) bullCount++
-    if (f.marketTimingSignal === -1) bearCount++
-    totalVolRatio += f.volumeRatio
-    totalDivCons += f.divergenceConsensus
-  }
-
-  const n = results.length
-  return {
-    scanned: n,
-    avgScore: Math.round(totalScore / n),
-    b1Count, s1Count, anomalyCount, superB1Count, b2Count, sb1Count,
-    shaofuCount, kengkouCount, sqCount, dszCount, dkCount,
-    bullCount, bearCount,
-    avgVolRatio: +(totalVolRatio / n).toFixed(2),
-    avgDivCons: +(totalDivCons / n).toFixed(2),
-    // 用第一只票的择时作为市场整体（或用多数）
-    marketTiming: bearCount > n / 2 ? -1 : bullCount > n / 2 ? 1 : 0,
-  }
-}
-
-// ═══════════════════════════════════════════════════════════════
-// K线加载器 — 从 public/data/kline/ 采样 N 只股票
-// ═══════════════════════════════════════════════════════════════
-
-async function loadKlineFile(code: string): Promise<KlineData | null> {
+async function loadKline(code: string): Promise<KlineData | null> {
   try {
-    const resp = await fetch(`/data/kline/${code}.json`)
-    if (!resp.ok) return null
-    const data = await resp.json()
-    if (!data.closes || data.closes.length < 60) return null
-    return {
-      dates: data.dates ?? [],
-      opens: data.opens ?? [],
-      closes: data.closes,
-      highs: data.highs ?? data.closes,
-      lows: data.lows ?? data.closes,
-      volumes: data.vols ?? data.volumes ?? [],
-    }
-  } catch {
-    return null
-  }
+    const r = await fetch(`/data/kline/${code}.json`)
+    if (!r.ok) return null
+    const d = await r.json()
+    if (!d.closes || d.closes.length < 60) return null
+    return { dates: d.dates??[], opens: d.opens??d.closes, closes: d.closes, highs: d.highs??d.closes, lows: d.lows??d.closes, volumes: d.vols??d.volumes??[] }
+  } catch { return null }
 }
-
-/** 加载指定代码列表的 K 线 */
-async function loadMultipleKlines(codes: string[]): Promise<{ code: string; kline: KlineData }[]> {
-  const results: { code: string; kline: KlineData }[] = []
-  for (const code of codes) {
-    const kline = await loadKlineFile(code)
-    if (kline) results.push({ code, kline })
-  }
-  return results
-}
-
-async function sampleStocks(n = 100): Promise<{ code: string; kline: KlineData }[]> {
-  const SAMPLE_CODES = [
-    '600519.SH', '000858.SZ', '601318.SH', '600036.SH', '000333.SZ',
-    '600276.SH', '000651.SZ', '601398.SH', '600900.SH', '000002.SZ',
-    '002415.SZ', '300750.SZ', '603259.SH', '600809.SH', '000568.SZ',
-    '002475.SZ', '300124.SZ', '601012.SH', '688981.SH', '002230.SZ',
-    '300059.SZ', '002049.SZ', '600570.SH', '300033.SZ', '000977.SZ',
-    '688008.SH', '300502.SZ', '002371.SZ', '603501.SH', '300782.SZ',
-  ]
-  return loadMultipleKlines(SAMPLE_CODES.slice(0, n))
-}
-
-// ═══════════════════════════════════════════════════════════════
-// 知识卡片子组件
-// ═══════════════════════════════════════════════════════════════
-
-function KnowledgeCardView({ card }: { card: KnowledgeCard }) {
-  const [expanded, setExpanded] = useState(false)
-  return (
-    <div className="rounded border border-amber-200 bg-white transition-colors hover:border-amber-400">
-      <button className="flex w-full items-center justify-between px-3 py-2 text-left" onClick={() => setExpanded(!expanded)}>
-        <div className="flex items-center gap-2">
-          <BookOpen size={12} className="text-amber-500" />
-          <span className="text-xs font-medium text-gray-700">{card.conceptName}</span>
-          <Badge variant="outline" className="text-[9px] text-gray-400">{card.layer}</Badge>
-        </div>
-        {expanded ? <ChevronUp size={14} className="text-gray-400" /> : <ChevronDown size={14} className="text-gray-400" />}
-      </button>
-      {expanded && (
-        <div className="border-t border-amber-100 px-3 pb-2 pt-1.5">
-          <p className="text-[11px] text-amber-800 leading-relaxed mb-1.5">{card.oneLiner}</p>
-          {card.rules.slice(0, 5).map((rule, i) => (
-            <div key={i} className="flex items-start gap-1.5 py-0.5">
-              <span className="mt-1 h-1 w-1 shrink-0 rounded-full bg-amber-400" />
-              <span className="text-[10px] text-gray-600 leading-relaxed">{rule}</span>
-            </div>
-          ))}
-          {card.rules.length > 5 && <p className="text-[10px] text-gray-400 mt-1">…还有 {card.rules.length - 5} 条规则</p>}
-        </div>
-      )}
-    </div>
-  )
-}
-
-const BUY_SIGNALS = [
-  { name: 'B1建仓波', field: 'b1Count' as const, desc: 'J<13 + 跌幅 + 缩量三合一', concept: 'B1建仓波' },
-  { name: '超级B1', field: 'superB1Count' as const, desc: 'J<0 + 周月线多周期共振', concept: '超级B1' },
-  { name: 'B2突破', field: 'b2Count' as const, desc: '突破30日高+量能配合', concept: 'B2突破' },
-  { name: 'SB1假摔', field: 'sb1Count' as const, desc: 'B1后假跌破再拉回', concept: 'SB1假摔战法' },
-  { name: '双枪战法', field: 'sqCount' as const, desc: '连续放量阳线探底', concept: '双枪战法' },
-  { name: '少妇战法', field: 'shaofuCount' as const, desc: '缩量+低位+均线粘合', concept: '少妇战法' },
-  { name: '坑口战法', field: 'kengkouCount' as const, desc: '颈线突破+回踩确认', concept: '坑口战法' },
-]
-
-const SELL_SIGNALS = [
-  { name: 'S1卖出', field: 's1Count' as const, desc: '高位放量滞涨+顶背离', concept: 'S1信号' },
-  { name: 'DSZ死亡之星', field: 'dszCount' as const, desc: '高位十字星/倒锤头', concept: 'DSZ战法' },
-  { name: '死亡K线', field: 'dkCount' as const, desc: '穿头破脚/乌云盖顶', concept: '十张死亡K线图' },
-]
-
-// ═══════════════════════════════════════════════════════════════
-// 主页面
-// ═══════════════════════════════════════════════════════════════
 
 export default function ZettarancPage() {
+  const [mode, setMode] = useState<'watchlist'|'30'|'100'|'200'>('30')
   const [scanning, setScanning] = useState(false)
-  const [scanTime, setScanTime] = useState<string>('')
-  const [results, setResults] = useState<ScanResult[]>([])
-  const [stats, setStats] = useState<ReturnType<typeof aggregateStats> | null>(null)
-  const [narrative, setNarrative] = useState('')
-  const [knowledgeCards, setKnowledgeCards] = useState<KnowledgeCard[]>([])
-  const [selectedConcept, setSelectedConcept] = useState<KnowledgeCard | null>(null)
-  const [showNarrative, setShowNarrative] = useState(true)
-  const [scanMode, setScanMode] = useState<'sample' | 'watchlist'>('sample')
-  const [scanSample, setScanSample] = useState(100)
-  const [watchlistCodes, setWatchlistCodes] = useState<string[]>([])
-  const [wlRefreshKey, setWlRefreshKey] = useState(0)
+  const [results, setResults] = useState<ScanEntry[]>([])
+  const [concept, setConcept] = useState<KnowledgeCard | null>(null)
+  const [wlCodes, setWlCodes] = useState<string[]>([])
 
-  const refreshWatchlist = useCallback(() => {
-    setWatchlistCodes(getWatchlist().map(s => s.code))
-    setWlRefreshKey(k => k + 1)
-    // Force results re-render so stars update
-    setResults(prev => [...prev])
-  }, [])
-
-  // 首次加载：有自选股则直接扫自选股
+  // 首次加载
   useEffect(() => {
     const wl = getWatchlist()
-    if (wl.length > 0) {
-      setScanMode('watchlist')
-      const codes = wl.map(s => s.code)
-      setWatchlistCodes(codes)
-      // 直接用 codes 扫，不等 React 状态提交
-      runScanWithCodes(codes)
-    } else {
-      runScan()
-    }
-  }, [])
-
-  const runScanWithCodes = useCallback(async (codes: string[]) => {
-    setScanning(true)
-    try {
-      const entries = await loadMultipleKlines(codes)
-      processScanResults(entries)
-    } catch (e) {
-      console.error('Scan error:', e)
-    } finally {
-      setScanning(false)
-      setScanTime(new Date().toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit', second: '2-digit' }))
-    }
-  }, [])
-
-  const processScanResults = useCallback((entries: { code: string; kline: KlineData }[]) => {
-    const scanResults: ScanResult[] = []
-    for (const entry of entries) {
-      const factors = computeZettarancFactors(entry.code, entry.kline)
-      scanResults.push({ code: entry.code, factors })
-    }
-    setResults(scanResults)
-    const s = aggregateStats(scanResults)
-    setStats(s)
-    if (scanResults.length > 0) {
-      const bestResult = [...scanResults].sort((a, b) => b.factors.zettarancScore - a.factors.zettarancScore)[0]
-      setNarrative(generateNarrative(bestResult.factors))
-      const allSignals = new Set<string>()
-      for (const r of scanResults) {
-        for (const sig of r.factors.matchedStrategies) allSignals.add(sig)
-      }
-      getKnowledgeCards([...allSignals]).then(setKnowledgeCards)
-    }
+    setWlCodes(wl.map(s => s.code))
+    if (wl.length > 0) setMode('watchlist')
   }, [])
 
   const runScan = useCallback(async () => {
     setScanning(true)
-    try {
-      const entries = scanMode === 'watchlist' && watchlistCodes.length > 0
-        ? await loadMultipleKlines(watchlistCodes)
-        : await sampleStocks(scanSample)
-      processScanResults(entries)
-    } catch (e) {
-      console.error('Scan error:', e)
-    } finally {
-      setScanning(false)
-      setScanTime(new Date().toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit', second: '2-digit' }))
+    setResults([])
+    let codes: string[]
+    if (mode === 'watchlist') codes = wlCodes
+    else codes = SAMPLE_CODES.slice(0, Number(mode))
+    
+    const entries: ScanEntry[] = []
+    for (const code of codes) {
+      const kl = await loadKline(code)
+      if (!kl) continue
+      entries.push({ code, factors: computeZettarancFactors(code, kl) })
     }
-  }, [scanSample, scanMode, watchlistCodes])
-
-  if (!stats) {
-    return (
-      <div className="flex h-96 items-center justify-center">
-        <div className="text-center">
-          <Loader2 size={32} className="mx-auto mb-3 animate-spin text-amber-500" />
-          <p className="text-sm text-gray-500">正在扫描全市场 Zettaranc 信号…</p>
-          <p className="text-[11px] text-gray-400 mt-1">加载 K 线数据 + 计算 20+ 战法因子</p>
-        </div>
-      </div>
-    )
-  }
+    entries.sort((a, b) => b.factors.zettarancScore - a.factors.zettarancScore)
+    setResults(entries)
+    setScanning(false)
+  }, [mode, wlCodes])
 
   return (
     <div className="space-y-4">
-      {/* ── 标题栏 ── */}
-      <div className="flex items-center justify-between border-b border-gray-200 pb-3">
-        <div className="flex items-center gap-3">
-          <div className="flex h-8 w-8 items-center justify-center rounded bg-amber-500">
-            <Target size={16} className="text-white" />
-          </div>
-          <div>
-            <h1 className="text-lg font-bold text-gray-900">Zettaranc 知行决策仪表盘</h1>
-            <p className="text-[11px] text-gray-400">规则驱动 · 纪律优先 · 7 步闭环 · 扫描 {stats.scanned} 只</p>
-          </div>
+      {/* 顶栏 */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-lg font-bold text-gray-900">知行体系</h1>
+          <p className="text-[11px] text-gray-400">
+            {results.length > 0 ? `扫描 ${results.length} 只 · Top Z评分 ${results[0]?.factors.zettarancScore ?? 0}` : '选择范围后点击扫描'}
+          </p>
         </div>
-        <div className="flex items-center gap-3">
-          <select
-            className="h-7 rounded border border-gray-200 bg-white px-2 text-[11px] text-gray-600"
-            value={scanMode === 'watchlist' ? 'watchlist' : String(scanSample)}
-            onChange={(e) => {
-              const v = e.target.value
-              if (v === 'watchlist') {
-                const wl = getWatchlist()
-                setScanMode('watchlist')
-                setWatchlistCodes(wl.map(s => s.code))
-              } else {
-                setScanMode('sample')
-                setScanSample(Number(v))
-              }
-            }}
-          >
-            {(() => {
-              const wlCount = getWatchlist().length
-              return wlCount > 0 ? <option value="watchlist">自选股 ({wlCount}只)</option> : null
-            })()}
-            <option value={30}>30 只</option>
-            <option value={100}>100 只</option>
-            <option value={200}>200 只</option>
+        <div className="flex items-center gap-2">
+          <select className="h-7 rounded border border-gray-200 px-2 text-xs text-gray-600"
+            value={mode} onChange={e => setMode(e.target.value as any)}>
+            {wlCodes.length > 0 && <option value="watchlist">自选股 ({wlCodes.length}只)</option>}
+            <option value="30">30 只</option>
+            <option value="100">100 只</option>
+            <option value="200">200 只</option>
           </select>
-          <span className="text-[11px] text-gray-400">
-            刷新 {scanTime}
-          </span>
-          <Button size="sm" variant="outline" className="h-7 text-xs" onClick={runScan} disabled={scanning}>
-            {scanning ? <Loader2 size={12} className="mr-1 animate-spin" /> : <Activity size={12} className="mr-1" />}
-            {scanning ? '扫描中…' : '刷新扫描'}
+          <Button size="sm" className="h-7 text-xs bg-amber-500 hover:bg-amber-600 text-white" onClick={runScan} disabled={scanning}>
+            {scanning ? <Loader2 size={12} className="mr-1 animate-spin"/> : <Activity size={12} className="mr-1"/>}
+            {scanning ? '扫描中…' : '扫描'}
           </Button>
         </div>
       </div>
 
-      {/* ── 自选股面板 ── */}
-      <WatchlistPanel
-        key={wlRefreshKey}
-        onSelectForScan={(codes) => {
-          setScanMode('watchlist')
-          setWatchlistCodes(codes)
-        }}
-        selectedForScan={scanMode === 'watchlist' ? watchlistCodes : []}
-      />
-      {showNarrative && narrative && (
-        <Card className="border-l-4 border-l-blue-500 bg-blue-50/30 p-4">
-          <div className="flex items-start justify-between">
-            <div className="flex items-center gap-2 mb-2">
-              <div className="flex h-6 w-6 items-center justify-center rounded-full bg-blue-500">
-                <Target size={12} className="text-white" />
-              </div>
-              <span className="text-xs font-semibold text-blue-700 tracking-wide uppercase">Z 哥视角 · 综合研判</span>
-            </div>
-            <button onClick={() => setShowNarrative(false)} className="text-gray-400 hover:text-gray-600"><Minus size={14} /></button>
-          </div>
-          <div className="text-sm text-gray-700 leading-relaxed whitespace-pre-line">{narrative}</div>
-          {!showNarrative && (
-            <button onClick={() => setShowNarrative(true)} className="mt-2 text-[10px] text-blue-500 hover:underline">展开 Z 哥视角</button>
-          )}
-        </Card>
-      )}
-
-      {/* ── ① 择时 ── */}
-      <Card className="border-l-4 border-l-amber-500 p-4">
-        <div className="flex items-start justify-between">
-          <div className="flex items-center gap-3">
-            <div className={cn('flex h-9 w-9 items-center justify-center rounded-full border',
-              stats.marketTiming === 1 ? 'text-emerald-600 bg-emerald-50 border-emerald-200'
-              : stats.marketTiming === -1 ? 'text-rose-600 bg-rose-50 border-rose-200'
-              : 'text-slate-500 bg-slate-50 border-slate-200')}>
-              {stats.marketTiming === 1 ? <TrendingUp className="h-4 w-4 text-emerald-500" />
-              : stats.marketTiming === -1 ? <TrendingDown className="h-4 w-4 text-rose-500" />
-              : <Minus className="h-4 w-4 text-slate-400" />}
-            </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <span className="text-xs font-semibold text-gray-400 tracking-wide uppercase">① 择时 · 市场环境</span>
-                <Badge variant="outline" className={cn('text-[10px]',
-                  stats.marketTiming === 1 ? 'text-emerald-600 bg-emerald-50 border-emerald-200'
-                  : stats.marketTiming === -1 ? 'text-rose-600 bg-rose-50 border-rose-200'
-                  : 'text-gray-400')}>
-                  {stats.marketTiming === 1 ? '多头环境' : stats.marketTiming === -1 ? '空头环境' : '震荡市'}
-                </Badge>
-              </div>
-              <p className="mt-0.5 text-sm text-gray-700">
-                {stats.bullCount} 只多头 / {stats.bearCount} 只空头 · 均量比 {stats.avgVolRatio}
-              </p>
-            </div>
-          </div>
-          <div className="text-right">
-            <div className={cn('text-2xl font-bold tabular-nums',
-              stats.marketTiming === -1 ? 'text-rose-600' : 'text-emerald-600')}>
-              {stats.marketTiming === -1 ? '观望' : stats.marketTiming === 1 ? '积极' : '谨慎'}
-            </div>
-            <div className="text-[10px] text-gray-400">操作建议</div>
-          </div>
-        </div>
-        <div className="mt-3 grid grid-cols-2 gap-2 border-t border-gray-100 pt-3">
-          <div className="flex items-center justify-between rounded bg-gray-50 px-3 py-1.5">
-            <span className="text-[11px] text-gray-500">多头票数</span>
-            <span className="font-mono text-xs tabular-nums text-emerald-500">{stats.bullCount}</span>
-          </div>
-          <div className="flex items-center justify-between rounded bg-gray-50 px-3 py-1.5">
-            <span className="text-[11px] text-gray-500">空头票数</span>
-            <span className="font-mono text-xs tabular-nums text-rose-500">{stats.bearCount}</span>
-          </div>
-        </div>
-      </Card>
-
-      {/* ── ② 选股 + ⑥ 风控 ── */}
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-        <Card className="p-4">
-          <div className="flex items-center gap-2 mb-3">
-            <Eye size={14} className="text-blue-500" />
-            <span className="text-xs font-semibold text-gray-400 tracking-wide uppercase">② 选股 · 异动扫描</span>
-          </div>
-          <div className="space-y-2">
-            <div className="flex items-center justify-between rounded bg-gray-50 px-3 py-2">
-              <span className="text-xs text-gray-600">异动选股法（涨&gt;5% + 量比&gt;2）</span>
-              <Badge variant="outline" className={cn('text-[10px]', stats.anomalyCount > 0 ? 'text-blue-600 bg-blue-50' : 'text-gray-400')}>
-                {stats.anomalyCount > 0 ? `${stats.anomalyCount} 只触发` : '无'}
-              </Badge>
-            </div>
-            <div className="flex items-center justify-between rounded bg-gray-50 px-3 py-2">
-              <span className="text-xs text-gray-600">三最原则（最美/最强/最硬）</span>
-              <Badge variant="outline" className="text-[10px] text-gray-400">待接入财务数据</Badge>
-            </div>
-          </div>
-          <p className="mt-2 text-[10px] text-gray-400">异动选股法过滤涨停板/ST/次新，只保留有参与价值的标的</p>
-        </Card>
-
-        <Card className={cn('p-4', stats.marketTiming === -1 ? 'border-l-4 border-l-rose-500' : '')}>
-          <div className="flex items-center gap-2 mb-3">
-            <Shield size={14} className="text-rose-500" />
-            <span className="text-xs font-semibold text-gray-400 tracking-wide uppercase">⑥ 风控 · 四不原则</span>
-          </div>
-          <div className="space-y-1.5">
-            <div className={cn('flex items-center justify-between rounded px-3 py-1.5',
-              stats.marketTiming === -1 ? 'bg-rose-50' : 'bg-gray-50')}>
-              <span className={cn('text-xs', stats.marketTiming === -1 ? 'text-rose-700' : 'text-gray-500')}>🚫 不逆势</span>
-              <span className={cn('text-[10px]', stats.marketTiming === -1 ? 'text-rose-500' : 'text-gray-400')}>
-                {stats.marketTiming === -1 ? '空头环境' : '环境正常'}
-              </span>
-            </div>
-            <div className="flex items-center justify-between rounded px-3 py-1.5 bg-gray-50">
-              <span className="text-xs text-gray-500">🚫 不重仓</span>
-              <span className="text-[10px] text-gray-400">单票≤20%</span>
-            </div>
-            <div className="flex items-center justify-between rounded px-3 py-1.5 bg-gray-50">
-              <span className="text-xs text-gray-500">🚫 不追高</span>
-              <span className="text-[10px] text-gray-400">不碰高位放量</span>
-            </div>
-            <div className="flex items-center justify-between rounded px-3 py-1.5 bg-gray-50">
-              <span className="text-xs text-gray-500">🚫 不死扛</span>
-              <span className="text-[10px] text-gray-400">-8% 无条件止损</span>
-            </div>
-          </div>
-        </Card>
-      </div>
-
-      {/* ── ③ 买点 + ④ 卖点 ── */}
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-        <Card className="p-4">
-          <div className="flex items-center gap-2 mb-3">
-            <Zap size={14} className="text-emerald-500" />
-            <span className="text-xs font-semibold text-gray-400 tracking-wide uppercase">③ 买点 · 战法信号矩阵</span>
-          </div>
-          <table className="w-full text-xs">
-            <thead>
-              <tr className="border-b border-gray-100 text-[10px] text-gray-400">
-                <th className="pb-2 text-left font-medium">战法</th>
-                <th className="pb-2 text-right font-medium">命中</th>
-                <th className="pb-2 text-right font-medium">命中率</th>
-              </tr>
-            </thead>
-            <tbody>
-              {BUY_SIGNALS.map((s) => {
-                const count = (stats as Record<string, number>)[s.field] ?? 0
-                const rate = stats.scanned > 0 ? ((count / stats.scanned) * 100).toFixed(1) : '0'
-                return (
-                  <tr key={s.name}
-                    className="border-b border-gray-50 hover:bg-amber-50/30 transition-colors cursor-pointer"
-                    onClick={() => { getConceptByName(s.concept).then(setSelectedConcept) }}
-                  >
-                    <td className="py-2">
-                      <div className="font-medium text-gray-700">{s.name}</div>
-                      <div className="text-[10px] text-gray-400">{s.desc}</div>
-                    </td>
-                    <td className="py-2 text-right">
-                      <span className={cn('font-mono tabular-nums font-semibold',
-                        count > 0 ? 'text-emerald-600' : 'text-gray-400')}>
-                        {count}
-                      </span>
-                    </td>
-                    <td className="py-2 text-right">
-                      <span className="text-gray-500">{rate}%</span>
-                    </td>
-                  </tr>
-                )
-              })}
-            </tbody>
-          </table>
-        </Card>
-
-        <Card className="p-4">
-          <div className="flex items-center gap-2 mb-3">
-            <AlertTriangle size={14} className="text-rose-500" />
-            <span className="text-xs font-semibold text-gray-400 tracking-wide uppercase">④ 卖点 · 离场信号监控</span>
-          </div>
-          <table className="w-full text-xs">
-            <thead>
-              <tr className="border-b border-gray-100 text-[10px] text-gray-400">
-                <th className="pb-2 text-left font-medium">信号</th>
-                <th className="pb-2 text-right font-medium">命中</th>
-                <th className="pb-2 text-right font-medium">命中率</th>
-              </tr>
-            </thead>
-            <tbody>
-              {SELL_SIGNALS.map((s) => {
-                const count = (stats as Record<string, number>)[s.field] ?? 0
-                const rate = stats.scanned > 0 ? ((count / stats.scanned) * 100).toFixed(1) : '0'
-                return (
-                  <tr key={s.name}
-                    className="border-b border-gray-50 hover:bg-rose-50/30 transition-colors cursor-pointer"
-                    onClick={() => { getConceptByName(s.concept).then(setSelectedConcept) }}
-                  >
-                    <td className="py-2">
-                      <div className="font-medium text-gray-700">{s.name}</div>
-                      <div className="text-[10px] text-gray-400">{s.desc}</div>
-                    </td>
-                    <td className="py-2 text-right">
-                      <span className={cn('font-mono tabular-nums font-semibold',
-                        count > 0 ? 'text-rose-600' : 'text-gray-400')}>
-                        {count}
-                      </span>
-                    </td>
-                    <td className="py-2 text-right">
-                      <span className="text-gray-500">{rate}%</span>
-                    </td>
-                  </tr>
-                )
-              })}
-            </tbody>
-          </table>
-        </Card>
-      </div>
-
-      {/* ── ⑤ 持仓 + ⑦ 心法 ── */}
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-        <Card className="p-4">
-          <div className="flex items-center gap-2 mb-3">
-            <BarChart3 size={14} className="text-blue-500" />
-            <span className="text-xs font-semibold text-gray-400 tracking-wide uppercase">⑤ 持仓 · 去弱留强</span>
-          </div>
-          <div className="space-y-2">
-            <div className="flex items-center justify-between rounded bg-gray-50 px-3 py-2">
-              <span className="text-xs text-gray-600">综合评分均值</span>
-              <span className="font-mono text-xs tabular-nums font-semibold text-blue-600">{stats.avgScore}</span>
-            </div>
-            <div className="flex items-center justify-between rounded bg-gray-50 px-3 py-2">
-              <span className="text-xs text-gray-600">买入信号覆盖率</span>
-              <span className="font-mono text-xs tabular-nums font-semibold text-amber-600">
-                {(((stats.b1Count + stats.superB1Count + stats.b2Count + stats.sb1Count) / stats.scanned) * 100).toFixed(1)}%
-              </span>
-            </div>
-            <div className="flex items-center justify-between rounded bg-gray-50 px-3 py-2">
-              <span className="text-xs text-gray-600">去弱留强触发</span>
-              <Badge variant="outline" className="text-[10px] text-gray-400">接入持仓数据后启用</Badge>
-            </div>
-          </div>
-          <div className="mt-3 rounded border border-amber-200 bg-amber-50 px-3 py-2">
-            <p className="text-[11px] text-amber-700">💡 <strong>底仓守信仰，动态仓守纪律</strong> — 股票不是爱情，不涨就换</p>
-          </div>
-        </Card>
-
-        <Card className="p-4">
-          <div className="flex items-center gap-2 mb-3">
-            <Gauge size={14} className="text-purple-500" />
-            <span className="text-xs font-semibold text-gray-400 tracking-wide uppercase">⑦ 心法 · 交易心理</span>
-          </div>
-          <div className="space-y-2">
-            <div className="flex items-center justify-between rounded bg-gray-50 px-3 py-2">
-              <span className="text-xs text-gray-600">市场分歧度均值</span>
-              <span className="font-mono text-xs tabular-nums text-purple-600">{stats.avgDivCons.toFixed(1)}</span>
-            </div>
-            <div className="flex items-center justify-between rounded bg-gray-50 px-3 py-2">
-              <span className="text-xs text-gray-600">三波理论阶段</span>
-              <span className="font-mono text-xs tabular-nums text-gray-600">{stats.marketTiming === 1 ? '第2波' : stats.marketTiming === -1 ? '第1波' : '震荡'}</span>
-            </div>
-            <div className="flex items-center justify-between rounded bg-gray-50 px-3 py-2">
-              <span className="text-xs text-gray-600">均量比</span>
-              <span className="font-mono text-xs tabular-nums text-amber-600">{stats.avgVolRatio}</span>
-            </div>
-          </div>
-          <div className="mt-3 rounded border border-blue-200 bg-blue-50 px-3 py-2">
-            <p className="text-[11px] text-blue-700">🧠 <strong>交易到最后，拼的不是技术，是人性</strong> — 分歧越大越要冷静</p>
-          </div>
-        </Card>
-      </div>
-
-      {/* ── 扫描结果明细 ── */}
+      {/* 结果表 */}
       {results.length > 0 && (
-        <Card className="p-4">
-          <div className="flex items-center gap-2 mb-3">
-            <ListChecks size={14} className="text-amber-500" />
-            <span className="text-xs font-semibold text-gray-400 tracking-wide uppercase">扫描结果明细 · Top {Math.min(20, results.length)}</span>
-            <span className="text-[10px] text-gray-400">（按 Z 评分排序，点击 ⭐ 加入自选）</span>
-          </div>
-          <div className="overflow-x-auto">
-            <table className="w-full text-xs">
-              <thead>
-                <tr className="border-b border-gray-100 text-[10px] text-gray-400">
-                  <th className="pb-1.5 px-2 text-left font-medium">代码</th>
-                  <th className="pb-1.5 px-2 text-right font-medium">最新价</th>
-                  <th className="pb-1.5 px-2 text-right font-medium">Z评分</th>
-                  <th className="pb-1.5 px-2 text-left font-medium">命中战法</th>
-                  <th className="pb-1.5 px-2 text-right font-medium">K/J/D</th>
-                  <th className="pb-1.5 px-2 text-center font-medium w-10">自选</th>
-                </tr>
-              </thead>
-              <tbody>
-                {[...results]
-                  .sort((a, b) => b.factors.zettarancScore - a.factors.zettarancScore)
-                  .slice(0, 20)
-                  .map((r) => {
-                    const f = r.factors
-                    const isWL = watchlistCodes.includes(r.code)
-                    return (
-                      <tr key={r.code} className={cn(
-                        'border-b border-gray-50 transition-colors',
-                        f.zettarancScore >= 50 ? 'hover:bg-amber-50/30' : 'hover:bg-gray-50',
-                      )}>
-                        <td className="py-1.5 px-2">
-                          <span className="font-mono tabular-nums text-gray-700">{r.code}</span>
-                        </td>
-                        <td className="py-1.5 px-2 text-right font-mono tabular-nums text-gray-600">{f.ma20 > 0 ? fmtNum(f.ma20) : '—'}</td>
-                        <td className="py-1.5 px-2 text-right">
-                          <span className={cn('font-mono tabular-nums font-semibold',
-                            f.zettarancScore >= 60 ? 'text-emerald-600' :
-                            f.zettarancScore >= 40 ? 'text-amber-600' : 'text-gray-400')}>
-                            {f.zettarancScore}
-                          </span>
-                        </td>
-                        <td className="py-1.5 px-2">
-                          <div className="flex flex-wrap gap-0.5">
-                            {f.matchedStrategies.slice(0, 4).map(s => (
-                              <Badge key={s} variant="outline" className={cn(
-                                'text-[9px] leading-tight',
-                                s.includes('⚠️') ? 'text-rose-500 border-rose-200' : 'text-amber-600 border-amber-200'
-                              )}>{s}</Badge>
-                            ))}
-                            {f.matchedStrategies.length > 4 && (
-                              <span className="text-[9px] text-gray-400">+{f.matchedStrategies.length - 4}</span>
-                            )}
-                          </div>
-                        </td>
-                        <td className="py-1.5 px-2 text-right font-mono tabular-nums text-[10px] text-gray-500">
-                          {f.kdjK.toFixed(0)}/{f.kdjD.toFixed(0)}/{f.kdjJ.toFixed(0)}
-                        </td>
-                        <td className="py-1.5 px-2 text-center">
-                          <button
-                            onClick={() => {
-                              if (isWL) {
-                                removeFromWatchlist(r.code)
-                              } else {
-                                addToWatchlist(r.code, r.code, f.ma20 || 0)
-                              }
-                              refreshWatchlist()
-                            }}
-                            className={cn(
-                              'text-xs transition-colors',
-                              isWL ? 'text-amber-500' : 'text-gray-300 hover:text-amber-500',
-                            )}
-                            title={isWL ? '取消自选' : '加入自选'}
-                          >
-                            {isWL ? '⭐' : '☆'}
-                          </button>
-                        </td>
-                      </tr>
-                    )
-                  })}
-              </tbody>
-            </table>
-          </div>
+        <Card className="overflow-hidden">
+          <table className="w-full text-xs">
+            <thead>
+              <tr className="border-b border-gray-200 bg-gray-50/50 text-[10px] text-gray-400">
+                <th className="py-2 px-3 text-left">代码</th>
+                <th className="py-2 px-3 text-right">Z评分</th>
+                <th className="py-2 px-3 text-left">命中战法</th>
+                <th className="py-2 px-3 text-right">K / D / J</th>
+                <th className="py-2 px-3 text-right">量比</th>
+              </tr>
+            </thead>
+            <tbody>
+              {results.map(r => {
+                const f = r.factors
+                return (
+                  <tr key={r.code} className={cn('border-b border-gray-50', f.zettarancScore >= 50 ? 'hover:bg-amber-50/30' : 'hover:bg-gray-50')}>
+                    <td className="py-1.5 px-3 font-mono text-gray-700">{r.code}</td>
+                    <td className="py-1.5 px-3 text-right">
+                      <span className={cn('font-mono font-semibold', f.zettarancScore >= 60 ? 'text-red-500' : f.zettarancScore >= 40 ? 'text-amber-600' : 'text-gray-400')}>
+                        {f.zettarancScore}
+                      </span>
+                    </td>
+                    <td className="py-1.5 px-3">
+                      <div className="flex flex-wrap gap-0.5">
+                        {f.matchedStrategies.slice(0, 5).map(s => (
+                          <Badge key={s} variant="outline"
+                            className={cn('text-[9px] cursor-pointer', s.includes('⚠️') ? 'text-rose-500 border-rose-200' : 'text-amber-600 border-amber-200')}
+                            onClick={async () => {
+                              // 点击战法名→查知识库
+                              const name = s.replace('⚠️','').trim()
+                              const cards = await getKnowledgeCards([s])
+                              if (cards[0]) setConcept(cards[0])
+                            }}>
+                            {s}
+                          </Badge>
+                        ))}
+                      </div>
+                    </td>
+                    <td className="py-1.5 px-3 text-right font-mono text-[10px] text-gray-500">
+                      {f.kdjK.toFixed(0)}/{f.kdjD.toFixed(0)}/{f.kdjJ.toFixed(0)}
+                    </td>
+                    <td className="py-1.5 px-3 text-right font-mono text-gray-500">{f.volumeRatio.toFixed(1)}</td>
+                  </tr>
+                )
+              })}
+            </tbody>
+          </table>
         </Card>
       )}
 
-      {/* ── 知识库引用 ── */}
-      {knowledgeCards.length > 0 && (
-        <div className="rounded border border-amber-200 bg-amber-50/30 p-4">
-          <div className="flex items-center gap-2 mb-3">
-            <BookOpen size={14} className="text-amber-500" />
-            <span className="text-xs font-semibold text-gray-500 tracking-wide uppercase">知识库引用 — 当前信号匹配</span>
-            <Badge variant="outline" className="text-[9px] text-amber-600">{knowledgeCards.length} 个概念页</Badge>
-          </div>
-          <div className="grid grid-cols-1 gap-2 lg:grid-cols-2 xl:grid-cols-3">
-            {knowledgeCards.map((card) => (
-              <KnowledgeCardView key={card.conceptName} card={card} />
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* ── 选中概念弹窗 ── */}
-      {selectedConcept && (
+      {/* 知识库弹窗 */}
+      {concept && (
         <Card className="border-2 border-blue-400 p-4 bg-blue-50/20">
-          <div className="flex items-center justify-between mb-3">
-            <div className="flex items-center gap-2">
-              <BookOpen size={14} className="text-blue-500" />
-              <span className="text-sm font-semibold text-gray-800">{selectedConcept.conceptName}</span>
-              <Badge variant="outline" className="text-[9px]">{selectedConcept.layer}</Badge>
-            </div>
-            <button onClick={() => setSelectedConcept(null)} className="text-gray-400 hover:text-gray-600"><Minus size={14} /></button>
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-sm font-semibold">{concept.conceptName}</span>
+            <button onClick={() => setConcept(null)} className="text-gray-400 text-lg leading-none">&times;</button>
           </div>
-          <p className="text-sm text-blue-800 mb-2">{selectedConcept.oneLiner}</p>
-          <div className="space-y-1">
-            {selectedConcept.rules.slice(0, 8).map((rule, i) => (
-              <div key={i} className="flex items-start gap-2">
-                <span className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-blue-400" />
-                <span className="text-xs text-gray-700 leading-relaxed">{rule}</span>
+          <p className="text-xs text-blue-800 mb-2">{concept.oneLiner}</p>
+          <div className="space-y-0.5">
+            {concept.rules.slice(0, 5).map((r, i) => (
+              <div key={i} className="flex items-start gap-1.5">
+                <span className="mt-1 h-1 w-1 shrink-0 rounded-full bg-blue-400"/>
+                <span className="text-[10px] text-gray-700">{r}</span>
               </div>
             ))}
           </div>
         </Card>
+      )}
+
+      {!scanning && results.length === 0 && (
+        <div className="flex h-64 items-center justify-center text-sm text-gray-400">
+          选择扫描范围，点击「扫描」开始分析
+        </div>
       )}
     </div>
   )
