@@ -271,6 +271,62 @@ export function taskApi(): Plugin {
         }
 
 
+        // ── POST /api/factor/mine ──
+        if (url === '/api/factor/mine' && req.method === 'POST') {
+          const id = uid()
+          const task: Task = {
+            id, type: 'factor_mine', status: 'pending', progress: 0,
+            message: '因子挖掘任务已提交', createdAt: new Date().toISOString(),
+          }
+          saveTask(task)
+          const child = spawn('/Users/kurvara/.hermes/hermes-agent/venv/bin/python3.11', [
+            path.resolve('scripts/factor_miner.py'), 'mine',
+            '-g', '500', '-k', '50', '-o', 'discovered_factors.json',
+            '--top-stocks', '500',
+          ], { cwd: process.cwd(), env: { ...process.env, PYTHONUNBUFFERED: '1' }, timeout: 600000 })
+          child.stdout?.on('data', (d: Buffer) => {
+            const text = d.toString()
+            const pm = text.match(/PROGRESS:(\d+)/)
+            if (pm) { task.progress = parseInt(pm[1]); task.message = text.trim().slice(-80); saveTask(task) }
+          })
+          child.on('close', (code) => {
+            task.status = code === 0 ? 'completed' : 'failed'
+            task.progress = code === 0 ? 100 : 0
+            task.message = code === 0 ? '因子挖掘完成' : '挖掘失败'
+            task.completedAt = new Date().toISOString()
+            saveTask(task)
+          })
+          child.on('error', (err) => {
+            task.status = 'failed'; task.error = err.message
+            task.message = '进程启动失败'; task.completedAt = new Date().toISOString()
+            saveTask(task)
+          })
+          json(res, 202, { taskId: id })
+          return
+        }
+
+
+        // ── POST /api/factor/eval ──
+        if (url === '/api/factor/eval' && req.method === 'POST') {
+          const body = await readBody(req)
+          let params: Record<string, unknown> = {}
+          try { params = JSON.parse(body) } catch { /* */ }
+          const expr = (params.expression as string) ?? ''
+          const child = spawn('/usr/bin/python3', [
+            path.resolve('scripts/factor_miner.py'), 'eval', '-e', expr,
+          ], { cwd: process.cwd(), env: { ...process.env, PYTHONUNBUFFERED: '1' }, timeout: 120000 })
+          let stdout = ''
+          child.stdout?.on('data', (d: Buffer) => { stdout += d.toString() })
+          child.stderr?.on('data', (d: Buffer) => { stdout += d.toString() })
+          child.on('close', (code) => {
+            try { json(res, code === 0 ? 200 : 500, JSON.parse(stdout.trim() || '{}')) }
+            catch { json(res, 500, { error: stdout.slice(0, 500) || 'parse error' }) }
+          })
+          child.on('error', (err) => json(res, 500, { error: err.message }))
+          return
+        }
+
+
         // ── POST /api/tasks/backtest ──
         if (url === '/api/tasks/backtest' && req.method === 'POST') {
           const body = await readBody(req)

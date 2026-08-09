@@ -181,4 +181,41 @@ export const RESEARCH_FRAMEWORKS: ResearchFramework[] = [
       ],
     },
   },
+
+  // ── Zettaranc 知行体系（第 7 套）──
+  {
+    id: 'zettaranc',
+    name: '知行体系',
+    institution: 'Zettaranc (Z哥)',
+    description: '规则驱动、纪律优先的 A 股短线/波段交易系统。B1 建仓波、少妇战法、坑口战法、双枪战法等经典战法。',
+    version: '1.0',
+    dimensions: [
+      { id: 'b1_signal', name: 'B1 建仓波信号', weight: 0.30, description: 'KDJ J<13 黄金买点 + 两个30%原则' },
+      { id: 'shaofu', name: '少妇战法', weight: 0.25, description: '缩量极致+低位+均线粘合' },
+      { id: 'kengkou', name: '坑口战法', weight: 0.20, description: '颈线突破+回踩确认+带量上攻' },
+      { id: 'risk', name: '风险预警', weight: 0.25, description: '背离检测+出货特征+高位警示' },
+    ],
+    indicators: {
+      b1_signal: [
+        { field: 'kdjJ', label: 'KDJ J值', scoreType: 'percentile', direction: -1 },
+        { field: 'b1Score', label: 'B1综合评分', scoreType: 'percentile', direction: 1 },
+        { field: 'decline20d', label: '20日跌幅', scoreType: 'percentile', direction: -1 },
+      ],
+      shaofu: [
+        { field: 'shaofuScore', label: '少妇战法评分', scoreType: 'percentile', direction: 1 },
+        { field: 'volumeRatio', label: '量比', scoreType: 'percentile', direction: -1 },
+        { field: 'maStickiness', label: '均线粘合度', scoreType: 'percentile', direction: -1 },
+      ],
+      kengkou: [
+        { field: 'kengkouScore', label: '坑口评分', scoreType: 'percentile', direction: 1 },
+        { field: 'mom5', label: '5日动量', scoreType: 'percentile', direction: 1 },
+        { field: 'volumeRatio', label: '量比', scoreType: 'percentile', direction: 1 },
+      ],
+      risk: [
+        { field: 'macdDivergence', label: 'MACD背离', scoreType: 'direction', direction: 1 },
+        { field: 'kdjDivergence', label: 'KDJ背离', scoreType: 'direction', direction: 1 },
+        { field: 'volumeRatio', label: '异常放量', scoreType: 'direction', direction: -1 },
+      ],
+    },
+  },
 ]

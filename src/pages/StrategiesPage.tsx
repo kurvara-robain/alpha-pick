@@ -127,6 +127,33 @@ const SEED_STRATEGIES: SeedStrategy[] = [
     // universe.json 暂无股息率字段，筛选引擎无法执行该条件——明示"暂不支持"而非静默放行
     unsupported: ['股息率大于3%'],
   },
+  // ── Zettaranc 知行体系 ──
+  {
+    name: 'Zettaranc B1 建仓波',
+    description: 'KDJ J<13 黄金买点 + 换手率<3% + 20日下跌，守株待兔式买入',
+    conditions: [
+      { field: 'kdj_j', op: '<', value: 13, raw: 'KDJ J值<13' },
+      { field: 'turnover', op: '<', value: 3, raw: '换手率<3%' },
+      { field: 'mom20', op: '<', value: -5, raw: '20日跌幅>5%' },
+    ],
+  },
+  {
+    name: 'Zettaranc 少妇战法',
+    description: '缩量极致+均线粘合+低位，三合一共振信号',
+    conditions: [
+      { field: 'volume_ratio', op: '<', value: 0.5, raw: '量比<0.5（缩量）' },
+      { field: 'ma_stickiness', op: '<', value: 4, raw: '均线粘合度<4%' },
+      { field: 'position_vs_ma60', op: '<', value: -5, raw: '距60日线<-5%（低位）' },
+    ],
+  },
+  {
+    name: 'Zettaranc 坑口战法',
+    description: '颈线突破+回踩确认+放量上攻，右侧确认进场',
+    conditions: [
+      { field: 'breakout_rate', op: '>', value: 2, raw: '突破颈线>2%' },
+      { field: 'volume_surge', op: '>', value: 1.5, raw: '量比>1.5倍（放量突破）' },
+    ],
+  },
 ]
 
 // ── 页面 ─────────────────────────────────────────────────────

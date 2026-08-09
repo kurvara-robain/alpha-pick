@@ -14,6 +14,12 @@ export const AgentGraph = lazy(() => import('./AgentGraph'))
 
 /** DSL 可视化编辑器（V1.5） */
 export const DSLEditor = lazy(() => import('./DSLEditor'))
+
+/** 因子表达式编辑器 */
+export const FactorExpressionEditor = lazy(() => import('./FactorExpressionEditor'))
+
+/** 自动发现因子面板 */
+export const DiscoveredFactors = lazy(() => import('./DiscoveredFactors'))
 export function LazyLoader({ children }: { children: React.ReactNode }) {
   return (
     <Suspense fallback={
