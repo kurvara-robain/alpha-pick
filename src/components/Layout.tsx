@@ -61,7 +61,6 @@ export default function Layout() {
                   )
                 }
               >
-                <item.icon className="h-3.5 w-3.5 shrink-0" />
                 {item.label}
               </NavLink>
             ))}
