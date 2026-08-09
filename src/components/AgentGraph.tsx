@@ -9,6 +9,7 @@ import {
   BrainCircuit,
   CheckCircle2,
   Clock,
+  Database,
   FileText,
   AlertTriangle,
   Workflow,

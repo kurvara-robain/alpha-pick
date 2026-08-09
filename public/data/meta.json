@@ -1,1 +1,1 @@
-{"source":"东方财富选股器（清单/基本面）/ 腾讯财经（快照PB、K线）/ 东方财富 datacenter（现金流），公开接口","fetchedAt":"2026-08-08T13:44:15.882Z","stockCount":5533,"klineFailed":0,"klineDays":2500,"upCount":2854,"downCount":2531,"turnoverYi":26744,"cashflowUpdated":false,"note":"K线为前复权日线；市值单位亿元；现金流转单季度差分；AI评分为演示模型输出"}
+{"source":"Tushare Pro（行情/快照/复权因子主通道），东方财富/腾讯降级为兜底，公开接口","fetchedAt":"2026-08-08T22:47:05.783283+08:00","stockCount":5540,"klineFailed":1,"klineDays":2500,"upCount":2856,"downCount":2536,"turnoverYi":26834,"cashflowUpdated":false,"note":"K线为前复权日线；市值单位亿元；现金流转单季度差分；AI评分为演示模型输出"}
