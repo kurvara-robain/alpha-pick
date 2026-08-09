@@ -1,3 +1,70 @@
 Browserslist: browsers data (caniuse-lite) is 8 months old. Please run:
   npx update-browserslist-db@latest
   Why you should do it regularly: https://github.com/browserslist/update-db#readme
+5:29:56 PM [vite] Internal server error: /Users/kurvara/Hermes_Workspace/alpha-pick/src/pages/StrategiesPage.tsx: Expecting Unicode escape sequence \uXXXX. (129:5)
+
+  127 |     // universe.json 暂无股息率字段，筛选引擎无法执行该条件——明示"暂不支持"而非静默放行
+  128 |     unsupported: ['股息率大于3%'],
+> 129 |   },\n\n  // ── Zettaranc 知行体系 ──\n  {\n    name: 'Zettaranc B1 建仓波',\n    description: 'KDJ J<13 黄金买点 + 换手率<3% + 20日下跌，守株待兔式买入',\n    conditions: [\n      { field: 'kdj_j', op: '<', value: 13, raw: 'KDJ J值<13' },\n      { field: 'turnover', op: '<', value: 3, raw: '换手率<3%' },\n      { field: 'mom20', op: '<', value: -5, raw: '20日跌幅>5%' },\n    ],\n  },\n  {\n    name: 'Zettaranc 少妇战法',\n    description: '缩量极致+均线粘合+低位，三合一共振信号',\n    conditions: [\n      { field: 'volume_ratio', op: '<', value: 0.5, raw: '量比<0.5（缩量）' },\n      { field: 'ma_stickiness', op: '<', value: 4, raw: '均线粘合度<4%' },\n      { field: 'position_vs_ma60', op: '<', value: -5, raw: '距60日线<-5%（低位）' },\n    ],\n  },\n  {\n    name: 'Zettaranc 坑口战法',\n    description: '颈线突破+回踩确认+放量上攻，右侧确认进场',\n    conditions: [\n      { field: 'breakout_rate', op: '>', value: 2, raw: '突破颈线>2%' },\n      { field: 'volume_surge', op: '>', value: 1.5, raw: '量比>1.5倍（放量突破）' },\n    ],\n  },\n]
+      |      ^
+  130 |
+  131 | // ── 页面 ─────────────────────────────────────────────────────
+  132 |
+  Plugin: vite-plugin-inspect-dom-simple
+  File: /Users/kurvara/Hermes_Workspace/alpha-pick/src/pages/StrategiesPage.tsx:129:5
+  127 |      // universe.json 暂无股息率字段，筛选引擎无法执行该条件——明示"暂不支持"而非静默放行
+  128 |      unsupported: ['股息率大于3%'],
+  129 |    },\n\n  // ── Zettaranc 知行体系 ──\n  {\n    name: 'Zettaranc B1 建仓波',\n    description: 'KDJ J<13 黄金买点 + 换手率<3% + 20日...
+      |       ^
+  130 |  
+  131 |  // ── 页面 ─────────────────────────────────────────────────────
+      at constructor (/Users/kurvara/Hermes_Workspace/alpha-pick/node_modules/@babel/parser/lib/index.js:365:19)
+      at TypeScriptParserMixin.raise (/Users/kurvara/Hermes_Workspace/alpha-pick/node_modules/@babel/parser/lib/index.js:6616:19)
+      at TypeScriptParserMixin.readWord1 (/Users/kurvara/Hermes_Workspace/alpha-pick/node_modules/@babel/parser/lib/index.js:6576:16)
+      at TypeScriptParserMixin.readWord (/Users/kurvara/Hermes_Workspace/alpha-pick/node_modules/@babel/parser/lib/index.js:6596:23)
+      at TypeScriptParserMixin.getTokenFromCode (/Users/kurvara/Hermes_Workspace/alpha-pick/node_modules/@babel/parser/lib/index.js:6315:14)
+      at TypeScriptParserMixin.getTokenFromCode (/Users/kurvara/Hermes_Workspace/alpha-pick/node_modules/@babel/parser/lib/index.js:4809:11)
+      at TypeScriptParserMixin.getTokenFromCode (/Users/kurvara/Hermes_Workspace/alpha-pick/node_modules/@babel/parser/lib/index.js:10004:11)
+      at TypeScriptParserMixin.nextToken (/Users/kurvara/Hermes_Workspace/alpha-pick/node_modules/@babel/parser/lib/index.js:5799:10)
+      at TypeScriptParserMixin.next (/Users/kurvara/Hermes_Workspace/alpha-pick/node_modules/@babel/parser/lib/index.js:5709:10)
+      at TypeScriptParserMixin.eat (/Users/kurvara/Hermes_Workspace/alpha-pick/node_modules/@babel/parser/lib/index.js:5713:12)
+      at TypeScriptParserMixin.expect (/Users/kurvara/Hermes_Workspace/alpha-pick/node_modules/@babel/parser/lib/index.js:6915:15)
+      at TypeScriptParserMixin.parseExprList (/Users/kurvara/Hermes_Workspace/alpha-pick/node_modules/@babel/parser/lib/index.js:12158:14)
+      at TypeScriptParserMixin.parseArrayLike (/Users/kurvara/Hermes_Workspace/alpha-pick/node_modules/@babel/parser/lib/index.js:12074:26)
+      at TypeScriptParserMixin.parseArrayLike (/Users/kurvara/Hermes_Workspace/alpha-pick/node_modules/@babel/parser/lib/index.js:9210:24)
+      at TypeScriptParserMixin.parseExprAtom (/Users/kurvara/Hermes_Workspace/alpha-pick/node_modules/@babel/parser/lib/index.js:11352:23)
+      at TypeScriptParserMixin.parseExprAtom (/Users/kurvara/Hermes_Workspace/alpha-pick/node_modules/@babel/parser/lib/index.js:4776:20)
+      at TypeScriptParserMixin.parseExprSubscripts (/Users/kurvara/Hermes_Workspace/alpha-pick/node_modules/@babel/parser/lib/index.js:11098:23)
+      at TypeScriptParserMixin.parseUpdate (/Users/kurvara/Hermes_Workspace/alpha-pick/node_modules/@babel/parser/lib/index.js:11083:21)
+      at TypeScriptParserMixin.parseMaybeUnary (/Users/kurvara/Hermes_Workspace/alpha-pick/node_modules/@babel/parser/lib/index.js:11063:23)
+      at TypeScriptParserMixin.parseMaybeUnary (/Users/kurvara/Hermes_Workspace/alpha-pick/node_modules/@babel/parser/lib/index.js:9854:18)
+      at TypeScriptParserMixin.parseMaybeUnaryOrPrivate (/Users/kurvara/Hermes_Workspace/alpha-pick/node_modules/@babel/parser/lib/index.js:10916:61)
+      at TypeScriptParserMixin.parseExprOps (/Users/kurvara/Hermes_Workspace/alpha-pick/node_modules/@babel/parser/lib/index.js:10921:23)
+      at TypeScriptParserMixin.parseMaybeConditional (/Users/kurvara/Hermes_Workspace/alpha-pick/node_modules/@babel/parser/lib/index.js:10898:23)
+      at TypeScriptParserMixin.parseMaybeAssign (/Users/kurvara/Hermes_Workspace/alpha-pick/node_modules/@babel/parser/lib/index.js:10848:21)
+      at TypeScriptParserMixin.parseMaybeAssign (/Users/kurvara/Hermes_Workspace/alpha-pick/node_modules/@babel/parser/lib/index.js:9803:20)
+      at /Users/kurvara/Hermes_Workspace/alpha-pick/node_modules/@babel/parser/lib/index.js:10817:39
+      at TypeScriptParserMixin.allowInAnd (/Users/kurvara/Hermes_Workspace/alpha-pick/node_modules/@babel/parser/lib/index.js:12438:16)
+      at TypeScriptParserMixin.parseMaybeAssignAllowIn (/Users/kurvara/Hermes_Workspace/alpha-pick/node_modules/@babel/parser/lib/index.js:10817:17)
+      at TypeScriptParserMixin.parseVar (/Users/kurvara/Hermes_Workspace/alpha-pick/node_modules/@babel/parser/lib/index.js:13401:91)
+      at TypeScriptParserMixin.parseVarStatement (/Users/kurvara/Hermes_Workspace/alpha-pick/node_modules/@babel/parser/lib/index.js:13247:10)
+      at TypeScriptParserMixin.parseVarStatement (/Users/kurvara/Hermes_Workspace/alpha-pick/node_modules/@babel/parser/lib/index.js:9425:31)
+      at TypeScriptParserMixin.parseStatementContent (/Users/kurvara/Hermes_Workspace/alpha-pick/node_modules/@babel/parser/lib/index.js:12868:23)
+      at TypeScriptParserMixin.parseStatementContent (/Users/kurvara/Hermes_Workspace/alpha-pick/node_modules/@babel/parser/lib/index.js:9525:18)
+      at TypeScriptParserMixin.parseStatementLike (/Users/kurvara/Hermes_Workspace/alpha-pick/node_modules/@babel/parser/lib/index.js:12784:17)
+      at TypeScriptParserMixin.parseModuleItem (/Users/kurvara/Hermes_Workspace/alpha-pick/node_modules/@babel/parser/lib/index.js:12761:17)
+      at TypeScriptParserMixin.parseBlockOrModuleBlockBody (/Users/kurvara/Hermes_Workspace/alpha-pick/node_modules/@babel/parser/lib/index.js:13333:36)
+      at TypeScriptParserMixin.parseBlockBody (/Users/kurvara/Hermes_Workspace/alpha-pick/node_modules/@babel/parser/lib/index.js:13326:10)
+      at TypeScriptParserMixin.parseProgram (/Users/kurvara/Hermes_Workspace/alpha-pick/node_modules/@babel/parser/lib/index.js:12639:10)
+      at TypeScriptParserMixin.parseTopLevel (/Users/kurvara/Hermes_Workspace/alpha-pick/node_modules/@babel/parser/lib/index.js:12629:25)
+      at TypeScriptParserMixin.parse (/Users/kurvara/Hermes_Workspace/alpha-pick/node_modules/@babel/parser/lib/index.js:14505:25)
+      at TypeScriptParserMixin.parse (/Users/kurvara/Hermes_Workspace/alpha-pick/node_modules/@babel/parser/lib/index.js:10143:18)
+      at parse (/Users/kurvara/Hermes_Workspace/alpha-pick/node_modules/@babel/parser/lib/index.js:14539:38)
+      at parser (/Users/kurvara/Hermes_Workspace/alpha-pick/node_modules/@babel/core/lib/parser/index.js:41:34)
+      at parser.next (<anonymous>)
+      at parse (/Users/kurvara/Hermes_Workspace/alpha-pick/node_modules/@babel/core/lib/parse.js:25:37)
+      at parse.next (<anonymous>)
+      at evaluateSync (/Users/kurvara/Hermes_Workspace/alpha-pick/node_modules/gensync/index.js:251:28)
+      at sync (/Users/kurvara/Hermes_Workspace/alpha-pick/node_modules/gensync/index.js:89:14)
+      at stopHiding - secret - don't use this - v1 (/Users/kurvara/Hermes_Workspace/alpha-pick/node_modules/@babel/core/lib/errors/rewrite-stack-trace.js:47:12)
+      at parse (/Users/kurvara/Hermes_Workspace/alpha-pick/node_modules/@babel/core/lib/parse.js:34:76)
