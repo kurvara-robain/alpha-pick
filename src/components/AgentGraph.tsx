@@ -5,6 +5,7 @@
 // ─────────────────────────────────────────────────────────────
 import { useState } from 'react'
 import {
+  Activity,
   ArrowRight,
   BrainCircuit,
   CheckCircle2,
