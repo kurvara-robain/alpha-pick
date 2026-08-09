@@ -12,6 +12,7 @@ import {
   Wallet,
   FileSearch,
   TrendingUp,
+  Target,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Toaster } from '@/components/ui/sonner'
@@ -28,6 +29,7 @@ export const NAV_ITEMS = [
   { to: '/research', label: '个股投研', icon: FileSearch },
   { to: '/simtrade', label: '模拟交易', icon: TrendingUp },
   { to: '/pit', label: '时间旅行', icon: Clock },
+  { to: '/zettaranc', label: '知行体系', icon: Target },
 ] as const
 
 export default function Layout() {

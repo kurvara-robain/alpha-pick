@@ -15,6 +15,7 @@ import ReportsPage from './pages/ReportsPage'
 import ResearchPage from './pages/ResearchPage'
 import SimTradePage from './pages/SimTradePage'
 import PITPage from './pages/PITPage'
+import ZettarancPage from './pages/ZettarancPage'
 
 export default function App() {
   useEffect(() => { void mergeCollectedFactors() }, [])
@@ -35,6 +36,7 @@ export default function App() {
         <Route path="/research" element={<ResearchPage />} />
         <Route path="/simtrade" element={<SimTradePage />} />
         <Route path="/pit" element={<PITPage />} />
+        <Route path="/zettaranc" element={<ZettarancPage />} />
         <Route path="*" element={<Navigate to="/market" replace />} />
       </Route>
     </Routes>
