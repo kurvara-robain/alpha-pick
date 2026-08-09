@@ -3,13 +3,16 @@
 // Bloomberg 风格 7 步闭环 + 实时扫描 + 知识库引用
 // ─────────────────────────────────────────────────────────────
 import { useEffect, useState, useCallback } from 'react'
-import { TrendingUp, TrendingDown, Minus, AlertTriangle, Shield, Target, Eye, Zap, BarChart3, Gauge, Activity, BookOpen, ChevronDown, ChevronUp, Loader2 } from 'lucide-react'
+import { TrendingUp, TrendingDown, Minus, AlertTriangle, Shield, Target, Eye, Zap, BarChart3, Gauge, Activity, BookOpen, ChevronDown, ChevronUp, Loader2, ListChecks } from 'lucide-react'
 import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import { computeZettarancFactors, type ZettarancFactors, type KlineData } from '@/lib/zettarancFactors'
 import { generateNarrative, getKnowledgeCards, getConceptByName, type KnowledgeCard } from '@/lib/zettarancKnowledge'
+import WatchlistPanel from '@/components/WatchlistPanel'
+import { getWatchlist, addToWatchlist, removeFromWatchlist } from '@/lib/watchlistStore'
+import { fmtNum } from '@/lib/format'
 
 // ═══════════════════════════════════════════════════════════════
 // 类型
@@ -117,27 +120,26 @@ async function loadKlineFile(code: string): Promise<KlineData | null> {
   }
 }
 
-/** 采样扫描：加载 N 只有代表性的股票 */
-async function sampleStocks(n = 100): Promise<KlineData[]> {
-  // 硬编码一批有代表性的股票代码（不同市值/行业的混合）
+/** 加载指定代码列表的 K 线 */
+async function loadMultipleKlines(codes: string[]): Promise<{ code: string; kline: KlineData }[]> {
+  const results: { code: string; kline: KlineData }[] = []
+  for (const code of codes) {
+    const kline = await loadKlineFile(code)
+    if (kline) results.push({ code, kline })
+  }
+  return results
+}
+
+async function sampleStocks(n = 100): Promise<{ code: string; kline: KlineData }[]> {
   const SAMPLE_CODES = [
-    // 大盘蓝筹
     '600519.SH', '000858.SZ', '601318.SH', '600036.SH', '000333.SZ',
     '600276.SH', '000651.SZ', '601398.SH', '600900.SH', '000002.SZ',
-    // 中盘成长
     '002415.SZ', '300750.SZ', '603259.SH', '600809.SH', '000568.SZ',
     '002475.SZ', '300124.SZ', '601012.SH', '688981.SH', '002230.SZ',
-    // 小盘题材
     '300059.SZ', '002049.SZ', '600570.SH', '300033.SZ', '000977.SZ',
     '688008.SH', '300502.SZ', '002371.SZ', '603501.SH', '300782.SZ',
   ]
-
-  const results: KlineData[] = []
-  for (const code of SAMPLE_CODES.slice(0, n)) {
-    const kline = await loadKlineFile(code)
-    if (kline) results.push(kline)
-  }
-  return results
+  return loadMultipleKlines(SAMPLE_CODES.slice(0, n))
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -201,51 +203,79 @@ export default function ZettarancPage() {
   const [knowledgeCards, setKnowledgeCards] = useState<KnowledgeCard[]>([])
   const [selectedConcept, setSelectedConcept] = useState<KnowledgeCard | null>(null)
   const [showNarrative, setShowNarrative] = useState(true)
+  const [scanMode, setScanMode] = useState<'sample' | 'watchlist'>('sample')
   const [scanSample, setScanSample] = useState(100)
+  const [watchlistCodes, setWatchlistCodes] = useState<string[]>([])
+  const [wlRefreshKey, setWlRefreshKey] = useState(0)
 
-  // 首次加载自动跑一次
-  useEffect(() => { runScan() }, [])
+  const refreshWatchlist = useCallback(() => {
+    setWatchlistCodes(getWatchlist().map(s => s.code))
+    setWlRefreshKey(k => k + 1)
+    // Force results re-render so stars update
+    setResults(prev => [...prev])
+  }, [])
 
-  const runScan = useCallback(async () => {
+  // 首次加载：有自选股则直接扫自选股
+  useEffect(() => {
+    const wl = getWatchlist()
+    if (wl.length > 0) {
+      setScanMode('watchlist')
+      const codes = wl.map(s => s.code)
+      setWatchlistCodes(codes)
+      // 直接用 codes 扫，不等 React 状态提交
+      runScanWithCodes(codes)
+    } else {
+      runScan()
+    }
+  }, [])
+
+  const runScanWithCodes = useCallback(async (codes: string[]) => {
     setScanning(true)
     try {
-      const klines = await sampleStocks(scanSample)
-      const scanResults: ScanResult[] = []
-
-      // 逐只计算 Zettaranc 因子
-      for (const kl of klines) {
-        const code = kl.dates?.[kl.dates.length - 1]?.replace(/-/g, '') ?? ''
-        const factors = computeZettarancFactors(code, kl)
-        scanResults.push({ code, factors })
-      }
-
-      setResults(scanResults)
-      const s = aggregateStats(scanResults)
-      setStats(s)
-
-      // 生成 Z 哥视角
-      if (scanResults.length > 0) {
-        // 用第一只有信号的票生成叙事（或汇总所有信号）
-        const bestResult = [...scanResults].sort((a, b) => b.factors.zettarancScore - a.factors.zettarancScore)[0]
-        setNarrative(generateNarrative(bestResult.factors))
-
-        // 汇总所有触发的信号
-        const allSignals = new Set<string>()
-        for (const r of scanResults) {
-          for (const sig of r.factors.matchedStrategies) {
-            allSignals.add(sig)
-          }
-        }
-        getKnowledgeCards([...allSignals]).then(setKnowledgeCards)
-      }
-
-      setScanTime(new Date().toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit', second: '2-digit' }))
+      const entries = await loadMultipleKlines(codes)
+      processScanResults(entries)
     } catch (e) {
       console.error('Scan error:', e)
     } finally {
       setScanning(false)
+      setScanTime(new Date().toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit', second: '2-digit' }))
     }
-  }, [scanSample])
+  }, [])
+
+  const processScanResults = useCallback((entries: { code: string; kline: KlineData }[]) => {
+    const scanResults: ScanResult[] = []
+    for (const entry of entries) {
+      const factors = computeZettarancFactors(entry.code, entry.kline)
+      scanResults.push({ code: entry.code, factors })
+    }
+    setResults(scanResults)
+    const s = aggregateStats(scanResults)
+    setStats(s)
+    if (scanResults.length > 0) {
+      const bestResult = [...scanResults].sort((a, b) => b.factors.zettarancScore - a.factors.zettarancScore)[0]
+      setNarrative(generateNarrative(bestResult.factors))
+      const allSignals = new Set<string>()
+      for (const r of scanResults) {
+        for (const sig of r.factors.matchedStrategies) allSignals.add(sig)
+      }
+      getKnowledgeCards([...allSignals]).then(setKnowledgeCards)
+    }
+  }, [])
+
+  const runScan = useCallback(async () => {
+    setScanning(true)
+    try {
+      const entries = scanMode === 'watchlist' && watchlistCodes.length > 0
+        ? await loadMultipleKlines(watchlistCodes)
+        : await sampleStocks(scanSample)
+      processScanResults(entries)
+    } catch (e) {
+      console.error('Scan error:', e)
+    } finally {
+      setScanning(false)
+      setScanTime(new Date().toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit', second: '2-digit' }))
+    }
+  }, [scanSample, scanMode, watchlistCodes])
 
   if (!stats) {
     return (
@@ -275,9 +305,23 @@ export default function ZettarancPage() {
         <div className="flex items-center gap-3">
           <select
             className="h-7 rounded border border-gray-200 bg-white px-2 text-[11px] text-gray-600"
-            value={scanSample}
-            onChange={(e) => setScanSample(Number(e.target.value))}
+            value={scanMode === 'watchlist' ? 'watchlist' : String(scanSample)}
+            onChange={(e) => {
+              const v = e.target.value
+              if (v === 'watchlist') {
+                const wl = getWatchlist()
+                setScanMode('watchlist')
+                setWatchlistCodes(wl.map(s => s.code))
+              } else {
+                setScanMode('sample')
+                setScanSample(Number(v))
+              }
+            }}
           >
+            {(() => {
+              const wlCount = getWatchlist().length
+              return wlCount > 0 ? <option value="watchlist">自选股 ({wlCount}只)</option> : null
+            })()}
             <option value={30}>30 只</option>
             <option value={100}>100 只</option>
             <option value={200}>200 只</option>
@@ -292,7 +336,15 @@ export default function ZettarancPage() {
         </div>
       </div>
 
-      {/* ── Z 哥视角 ── */}
+      {/* ── 自选股面板 ── */}
+      <WatchlistPanel
+        key={wlRefreshKey}
+        onSelectForScan={(codes) => {
+          setScanMode('watchlist')
+          setWatchlistCodes(codes)
+        }}
+        selectedForScan={scanMode === 'watchlist' ? watchlistCodes : []}
+      />
       {showNarrative && narrative && (
         <Card className="border-l-4 border-l-blue-500 bg-blue-50/30 p-4">
           <div className="flex items-start justify-between">
@@ -548,6 +600,93 @@ export default function ZettarancPage() {
           </div>
         </Card>
       </div>
+
+      {/* ── 扫描结果明细 ── */}
+      {results.length > 0 && (
+        <Card className="p-4">
+          <div className="flex items-center gap-2 mb-3">
+            <ListChecks size={14} className="text-amber-500" />
+            <span className="text-xs font-semibold text-gray-400 tracking-wide uppercase">扫描结果明细 · Top {Math.min(20, results.length)}</span>
+            <span className="text-[10px] text-gray-400">（按 Z 评分排序，点击 ⭐ 加入自选）</span>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full text-xs">
+              <thead>
+                <tr className="border-b border-gray-100 text-[10px] text-gray-400">
+                  <th className="pb-1.5 px-2 text-left font-medium">代码</th>
+                  <th className="pb-1.5 px-2 text-right font-medium">最新价</th>
+                  <th className="pb-1.5 px-2 text-right font-medium">Z评分</th>
+                  <th className="pb-1.5 px-2 text-left font-medium">命中战法</th>
+                  <th className="pb-1.5 px-2 text-right font-medium">K/J/D</th>
+                  <th className="pb-1.5 px-2 text-center font-medium w-10">自选</th>
+                </tr>
+              </thead>
+              <tbody>
+                {[...results]
+                  .sort((a, b) => b.factors.zettarancScore - a.factors.zettarancScore)
+                  .slice(0, 20)
+                  .map((r) => {
+                    const f = r.factors
+                    const isWL = watchlistCodes.includes(r.code)
+                    return (
+                      <tr key={r.code} className={cn(
+                        'border-b border-gray-50 transition-colors',
+                        f.zettarancScore >= 50 ? 'hover:bg-amber-50/30' : 'hover:bg-gray-50',
+                      )}>
+                        <td className="py-1.5 px-2">
+                          <span className="font-mono tabular-nums text-gray-700">{r.code}</span>
+                        </td>
+                        <td className="py-1.5 px-2 text-right font-mono tabular-nums text-gray-600">{f.ma20 > 0 ? fmtNum(f.ma20) : '—'}</td>
+                        <td className="py-1.5 px-2 text-right">
+                          <span className={cn('font-mono tabular-nums font-semibold',
+                            f.zettarancScore >= 60 ? 'text-emerald-600' :
+                            f.zettarancScore >= 40 ? 'text-amber-600' : 'text-gray-400')}>
+                            {f.zettarancScore}
+                          </span>
+                        </td>
+                        <td className="py-1.5 px-2">
+                          <div className="flex flex-wrap gap-0.5">
+                            {f.matchedStrategies.slice(0, 4).map(s => (
+                              <Badge key={s} variant="outline" className={cn(
+                                'text-[9px] leading-tight',
+                                s.includes('⚠️') ? 'text-rose-500 border-rose-200' : 'text-amber-600 border-amber-200'
+                              )}>{s}</Badge>
+                            ))}
+                            {f.matchedStrategies.length > 4 && (
+                              <span className="text-[9px] text-gray-400">+{f.matchedStrategies.length - 4}</span>
+                            )}
+                          </div>
+                        </td>
+                        <td className="py-1.5 px-2 text-right font-mono tabular-nums text-[10px] text-gray-500">
+                          {f.kdjK.toFixed(0)}/{f.kdjD.toFixed(0)}/{f.kdjJ.toFixed(0)}
+                        </td>
+                        <td className="py-1.5 px-2 text-center">
+                          <button
+                            onClick={() => {
+                              if (isWL) {
+                                removeFromWatchlist(r.code)
+                              } else {
+                                addToWatchlist(r.code, r.code, f.ma20 || 0)
+                              }
+                              refreshWatchlist()
+                            }}
+                            className={cn(
+                              'text-xs transition-colors',
+                              isWL ? 'text-amber-500' : 'text-gray-300 hover:text-amber-500',
+                            )}
+                            title={isWL ? '取消自选' : '加入自选'}
+                          >
+                            {isWL ? '⭐' : '☆'}
+                          </button>
+                        </td>
+                      </tr>
+                    )
+                  })}
+              </tbody>
+            </table>
+          </div>
+        </Card>
+      )}
 
       {/* ── 知识库引用 ── */}
       {knowledgeCards.length > 0 && (
