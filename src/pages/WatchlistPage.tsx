@@ -24,6 +24,7 @@ import { fmtNum, fmtPct, pctBg, pctColor } from '@/lib/format'
 import { loadKline, loadUniverse, universeToStock } from '@/lib/marketData'
 import type { Stock } from '@/lib/mockData'
 import { useAsync } from '@/lib/useAsync'
+import { useAutoRefresh } from '@/lib/autoRefresh'
 import { getDB, subscribeDB, updateDB } from '@/lib/store'
 import type { DB } from '@/lib/store'
 import type { WatchItem, WatchList } from '@/lib/types'
@@ -216,16 +217,16 @@ function PageHeader() {
 export default function WatchlistPage() {
   const [db, setDb] = useState<DB>(() => getDB())
   const [selectedId, setSelectedId] = useState<string>('')
-  const universeState = useAsync(loadUniverse)
+  const { data: universeData, lastUpdated, refresh: refreshUniverse } = useAutoRefresh(loadUniverse, 30_000)
 
   useEffect(() => subscribeDB(() => setDb(getDB())), [])
 
   // 全 A 股票池按 code 索引（映射为 UI 消费的 Stock 形状）
   const stockMap = useMemo(() => {
     const m = new Map<string, Stock>()
-    for (const u of universeState.data ?? []) m.set(u.code, universeToStock(u))
+    for (const u of universeData ?? []) m.set(u.code, universeToStock(u))
     return m
-  }, [universeState.data])
+  }, [universeData])
 
   const lists = db.watchlists
   const selected: WatchList | null = lists.find((l) => l.id === selectedId) ?? lists[0] ?? null
