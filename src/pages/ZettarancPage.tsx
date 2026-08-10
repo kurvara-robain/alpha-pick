@@ -39,26 +39,37 @@ export default function ZettarancPage() {
   const [results, setResults] = useState<ScanEntry[]>([])
   const [concept, setConcept] = useState<KnowledgeCard | null>(null)
   const [wlCodes, setWlCodes] = useState<string[]>([])
+  const [watchlists, setWatchlists] = useState<Record<string, string[]>>({})
+  const [selList, setSelList] = useState('')
 
-  // 首次加载：自选股 + 备选清单
+  // 首次加载：手动自选 + 各备选清单
   useEffect(() => {
     const codes = new Set<string>()
     // 手动追踪的自选股
     for (const s of getWatchlist()) codes.add(s.code)
-    // DB 中保存的备选清单（组合工作台产出的）
+    if (codes.size > 0) setWlCodes(['__manual__', ...codes])
+    // DB 中保存的每个备选清单单独一个集合
     const db = getDB()
+    const lists: Record<string, string[]> = {}
     for (const wl of (db.watchlists ?? [])) {
-      for (const item of (wl.items ?? [])) codes.add(item.code)
+      const wCodes = (wl.items ?? []).map(i => i.code)
+      if (wCodes.length > 0) lists[wl.name ?? `清单${wl.id.slice(0,6)}`] = wCodes
     }
-    setWlCodes([...codes])
-    if (codes.size > 0) setMode('watchlist')
+    setWatchlists(lists)
+    // 默认选中第一个
+    const names = Object.keys(lists)
+    if (names.length > 0) { setSelList(names[0]); setMode('watchlist') }
   }, [])
 
   const runScan = useCallback(async () => {
     setScanning(true)
     setResults([])
     let codes: string[]
-    if (mode === 'watchlist') codes = wlCodes
+    if (mode === 'watchlist') {
+      // 使用选中清单的代码
+      codes = watchlists[selList] ?? []
+      if (codes.length === 0) codes = wlCodes.filter(c => c !== '__manual__')
+    }
     else codes = SAMPLE_CODES.slice(0, Number(mode))
     
     const entries: ScanEntry[] = []
@@ -70,7 +81,7 @@ export default function ZettarancPage() {
     entries.sort((a, b) => b.factors.zettarancScore - a.factors.zettarancScore)
     setResults(entries)
     setScanning(false)
-  }, [mode, wlCodes])
+  }, [mode, wlCodes, watchlists, selList])
 
   return (
     <div className="space-y-4">
@@ -84,8 +95,17 @@ export default function ZettarancPage() {
         </div>
         <div className="flex items-center gap-2">
           <select className="h-7 rounded border border-gray-200 px-2 text-xs text-gray-600"
-            value={mode} onChange={e => setMode(e.target.value as any)}>
-            {wlCodes.length > 0 && <option value="watchlist">自选股 ({wlCodes.length}只)</option>}
+            value={mode === 'watchlist' && selList ? selList : mode}
+            onChange={e => {
+              const v = e.target.value
+              if (watchlists[v]) { setMode('watchlist'); setSelList(v) }
+              else if (v === '__manual__') { setMode('watchlist'); setSelList('') }
+              else setMode(v as any)
+            }}>
+            {wlCodes.length > 1 && <option value="__manual__">手动自选 ({wlCodes.length - 1}只)</option>}
+            {Object.entries(watchlists).map(([name, codes]) => (
+              <option key={name} value={name}>{name} ({codes.length}只)</option>
+            ))}
             <option value="30">30 只</option>
             <option value="100">100 只</option>
             <option value="200">200 只</option>
