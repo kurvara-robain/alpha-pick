@@ -217,7 +217,7 @@ function PageHeader() {
 export default function WatchlistPage() {
   const [db, setDb] = useState<DB>(() => getDB())
   const [selectedId, setSelectedId] = useState<string>('')
-  const { data: universeData, lastUpdated, refresh: refreshUniverse } = useAutoRefresh(loadUniverse, 30_000)
+  const { data: universeData, loading: universeLoading, error: universeError, lastUpdated, refresh: refreshUniverse } = useAutoRefresh(loadUniverse, 30_000)
 
   useEffect(() => subscribeDB(() => setDb(getDB())), [])
 
@@ -243,7 +243,7 @@ export default function WatchlistPage() {
   }
 
   // 行情数据加载 / 错误态
-  if (universeState.loading) {
+  if (universeLoading) {
     return (
       <div className="space-y-5 p-6">
         <PageHeader />
@@ -251,11 +251,11 @@ export default function WatchlistPage() {
       </div>
     )
   }
-  if (universeState.error) {
+  if (universeError) {
     return (
       <div className="space-y-5 p-6">
         <PageHeader />
-        <ErrorBlock error={universeState.error} onRetry={universeState.reload} />
+        <ErrorBlock error={universeError} onRetry={refreshUniverse} />
       </div>
     )
   }
