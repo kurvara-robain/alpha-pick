@@ -12,6 +12,7 @@ import { fmtNum } from '@/lib/format'
 import { computeZettarancFactors, type ZettarancFactors, type KlineData } from '@/lib/zettarancFactors'
 import { getWatchlist } from '@/lib/watchlistStore'
 import { getKnowledgeCards } from '@/lib/zettarancKnowledge'
+import { getDB } from '@/lib/store'
 import type { KnowledgeCard } from '@/lib/zettarancKnowledge'
 
 const SAMPLE_CODES = [
@@ -39,11 +40,18 @@ export default function ZettarancPage() {
   const [concept, setConcept] = useState<KnowledgeCard | null>(null)
   const [wlCodes, setWlCodes] = useState<string[]>([])
 
-  // 首次加载
+  // 首次加载：自选股 + 备选清单
   useEffect(() => {
-    const wl = getWatchlist()
-    setWlCodes(wl.map(s => s.code))
-    if (wl.length > 0) setMode('watchlist')
+    const codes = new Set<string>()
+    // 手动追踪的自选股
+    for (const s of getWatchlist()) codes.add(s.code)
+    // DB 中保存的备选清单（组合工作台产出的）
+    const db = getDB()
+    for (const wl of (db.watchlists ?? [])) {
+      for (const item of (wl.items ?? [])) codes.add(item.code)
+    }
+    setWlCodes([...codes])
+    if (codes.size > 0) setMode('watchlist')
   }, [])
 
   const runScan = useCallback(async () => {
