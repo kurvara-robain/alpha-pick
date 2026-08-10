@@ -21,7 +21,7 @@ const SAMPLE_CODES = [
   '300059.SZ','002049.SZ','600570.SH','300033.SZ','000977.SZ','688008.SH','300502.SZ','002371.SZ','603501.SH','300782.SZ',
 ]
 
-type ScanEntry = { code: string; factors: ZettarancFactors }
+type ScanEntry = { code: string; name: string; factors: ZettarancFactors }
 
 async function loadKline(code: string): Promise<KlineData | null> {
   try {
@@ -41,6 +41,16 @@ export default function ZettarancPage() {
   const [wlCodes, setWlCodes] = useState<string[]>([])
   const [watchlists, setWatchlists] = useState<Record<string, string[]>>({})
   const [selList, setSelList] = useState('')
+  const [nameMap, setNameMap] = useState<Record<string, string>>({})
+
+  // 加载股票名称映射
+  useEffect(() => {
+    fetch('/data/universe.json').then(r => r.json()).then((data: any[]) => {
+      const map: Record<string, string> = {}
+      for (const s of (data ?? [])) map[s.code] = s.name ?? s.code
+      setNameMap(map)
+    }).catch(() => {})
+  }, [])
 
   // 首次加载：手动自选 + 各备选清单
   useEffect(() => {
@@ -76,12 +86,12 @@ export default function ZettarancPage() {
     for (const code of codes) {
       const kl = await loadKline(code)
       if (!kl) continue
-      entries.push({ code, factors: computeZettarancFactors(code, kl) })
+      entries.push({ code, name: nameMap[code] ?? code, factors: computeZettarancFactors(code, kl) })
     }
     entries.sort((a, b) => b.factors.zettarancScore - a.factors.zettarancScore)
     setResults(entries)
     setScanning(false)
-  }, [mode, wlCodes, watchlists, selList])
+  }, [mode, wlCodes, watchlists, selList, nameMap])
 
   return (
     <div className="space-y-4">
@@ -123,11 +133,14 @@ export default function ZettarancPage() {
           <table className="w-full text-xs">
             <thead>
               <tr className="border-b border-gray-200 bg-gray-50/50 text-[10px] text-gray-400">
-                <th className="py-2 px-3 text-left">代码</th>
-                <th className="py-2 px-3 text-right">Z评分</th>
-                <th className="py-2 px-3 text-left">命中战法</th>
-                <th className="py-2 px-3 text-right">K / D / J</th>
-                <th className="py-2 px-3 text-right">量比</th>
+                <th className="py-2 px-2 text-left">股票</th>
+                <th className="py-2 px-1 text-right">Z评分</th>
+                <th className="py-2 px-1 text-right hidden sm:table-cell">B1</th>
+                <th className="py-2 px-1 text-right hidden sm:table-cell">少妇</th>
+                <th className="py-2 px-1 text-right hidden sm:table-cell">坑口</th>
+                <th className="py-2 px-1 text-right">K/D/J</th>
+                <th className="py-2 px-1 text-right">量比</th>
+                <th className="py-2 px-2 text-left">战法</th>
               </tr>
             </thead>
             <tbody>
@@ -135,11 +148,33 @@ export default function ZettarancPage() {
                 const f = r.factors
                 return (
                   <tr key={r.code} className={cn('border-b border-gray-50', f.zettarancScore >= 50 ? 'hover:bg-amber-50/30' : 'hover:bg-gray-50')}>
-                    <td className="py-1.5 px-3 font-mono text-gray-700">{r.code}</td>
-                    <td className="py-1.5 px-3 text-right">
-                      <span className={cn('font-mono font-semibold', f.zettarancScore >= 60 ? 'text-red-500' : f.zettarancScore >= 40 ? 'text-amber-600' : 'text-gray-400')}>
+                    <td className="py-1.5 px-2">
+                      <div className="font-medium text-gray-900 text-[11px]">{r.name}</div>
+                      <div className="font-mono text-[10px] text-gray-400">{r.code}</div>
+                    </td>
+                    <td className="py-1.5 px-1 text-right">
+                      <span className={cn('font-mono font-semibold text-[11px]', f.zettarancScore >= 60 ? 'text-red-500' : f.zettarancScore >= 40 ? 'text-amber-600' : 'text-gray-400')}>
                         {f.zettarancScore}
                       </span>
+                    </td>
+                    <td className="py-1.5 px-1 text-right hidden sm:table-cell">
+                      <span className={cn('font-mono tabular-nums', f.b1Score >= 50 ? 'text-rose-600 font-semibold' : 'text-gray-400')}>{f.b1Score}</span>
+                    </td>
+                    <td className="py-1.5 px-1 text-right hidden sm:table-cell">
+                      <span className={cn('font-mono tabular-nums', f.shaofuScore >= 50 ? 'text-emerald-600 font-semibold' : 'text-gray-400')}>{f.shaofuScore}</span>
+                    </td>
+                    <td className="py-1.5 px-1 text-right hidden sm:table-cell">
+                      <span className={cn('font-mono tabular-nums', f.kengkouScore >= 50 ? 'text-violet-600 font-semibold' : 'text-gray-400')}>{f.kengkouScore}</span>
+                    </td>
+                    <td className="py-1.5 px-1 text-right font-mono text-[10px] text-gray-500">
+                      <span className={f.kdjJ < 13 ? 'text-rose-500 font-bold' : ''}>{f.kdjK.toFixed(0)}</span>
+                      <span className="text-gray-300">/</span>
+                      <span>{f.kdjD.toFixed(0)}</span>
+                      <span className="text-gray-300">/</span>
+                      <span className={f.kdjJ < 0 ? 'text-rose-500 font-bold' : ''}>{f.kdjJ.toFixed(0)}</span>
+                    </td>
+                    <td className="py-1.5 px-1 text-right font-mono tabular-nums text-gray-500">
+                      {f.volumeRatio.toFixed(1)}x
                     </td>
                     <td className="py-1.5 px-3">
                       <div className="flex flex-wrap gap-0.5">
