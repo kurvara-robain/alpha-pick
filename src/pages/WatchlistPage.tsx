@@ -217,16 +217,22 @@ function PageHeader() {
 export default function WatchlistPage() {
   const [db, setDb] = useState<DB>(() => getDB())
   const [selectedId, setSelectedId] = useState<string>('')
-  const { data: universeData, loading: universeLoading, error: universeError, lastUpdated, refresh: refreshUniverse } = useAutoRefresh(loadUniverse, 30_000)
+  const universeState = useAsync(loadUniverse)
+
+  // 每 30 秒自动刷新行情
+  useEffect(() => {
+    const timer = setInterval(() => universeState.reload?.(), 30_000)
+    return () => clearInterval(timer)
+  }, [universeState.reload])
 
   useEffect(() => subscribeDB(() => setDb(getDB())), [])
 
   // 全 A 股票池按 code 索引（映射为 UI 消费的 Stock 形状）
   const stockMap = useMemo(() => {
     const m = new Map<string, Stock>()
-    for (const u of universeData ?? []) m.set(u.code, universeToStock(u))
+    for (const u of universeState.data ?? []) m.set(u.code, universeToStock(u))
     return m
-  }, [universeData])
+  }, [universeState.data])
 
   const lists = db.watchlists
   const selected: WatchList | null = lists.find((l) => l.id === selectedId) ?? lists[0] ?? null
@@ -243,7 +249,7 @@ export default function WatchlistPage() {
   }
 
   // 行情数据加载 / 错误态
-  if (universeLoading) {
+  if (universeState.loading) {
     return (
       <div className="space-y-5 p-6">
         <PageHeader />
@@ -251,11 +257,11 @@ export default function WatchlistPage() {
       </div>
     )
   }
-  if (universeError) {
+  if (universeState.error) {
     return (
       <div className="space-y-5 p-6">
         <PageHeader />
-        <ErrorBlock error={universeError} onRetry={refreshUniverse} />
+        <ErrorBlock error={universeState.error} onRetry={universeState.reload} />
       </div>
     )
   }
