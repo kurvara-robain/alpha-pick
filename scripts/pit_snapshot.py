@@ -166,12 +166,20 @@ if __name__ == '__main__':
     parser.add_argument('--date', required=True, help='YYYY-MM-DD')
     parser.add_argument('--top-n', type=int, default=100)
     parser.add_argument('--output', default='')
+    # 运行时产物输出目录：默认 .runtime/pit/（不入 Git），可用 --out-dir 覆盖
+    parser.add_argument('--out-dir', default='')
     args = parser.parse_args()
     
     result = build_pit_snapshot(args.date, args.top_n)
     
     if args.output:
-        out_path = DATA_DIR / args.output
+        if args.out_dir:
+            out_dir = Path(args.out_dir)
+            out_dir.mkdir(parents=True, exist_ok=True)
+        else:
+            out_dir = Path(__file__).parent.parent / '.runtime' / 'pit'
+            out_dir.mkdir(parents=True, exist_ok=True)
+        out_path = out_dir / args.output
         with open(out_path, 'w') as f:
             json.dump(result, f, ensure_ascii=False)
         print(f"OUTPUT:{args.output}")

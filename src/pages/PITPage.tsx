@@ -72,7 +72,9 @@ export default function PITPage() {
         const res = await fetch(`/api/tasks/${taskId}`)
         const task = await res.json()
         if (task.status === 'completed') {
-          const dataRes = await fetch(`/data/pit-${date}.json`)
+          // 规则：结果经后端 API 读取（.runtime/pit/ 优先，兼容旧 public/data/），
+          // 不再直接 fetch /data/pit-${date}.json（运行时产物不入 Git）
+          const dataRes = await fetch(`/api/pit/result?date=${encodeURIComponent(date)}`)
           if (dataRes.ok) {
             const data = (await dataRes.json()) as PITResult
             setResult(data)

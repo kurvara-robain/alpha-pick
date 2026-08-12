@@ -43,3 +43,6 @@ __pycache__/
 .venv/
 venv-qlib/
 .alphamind-tasks/
+.runtime/
+public/data/pit-*.json
+.vite-launchd.err
