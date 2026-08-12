@@ -63,37 +63,27 @@ function FactorCard({
         {factor.definition?.slice(0, 100) ?? factor.notes?.slice(0, 100) ?? '暂无简介'}
       </p>
 
-      {/* 第三行：指标 */}
-      <div className="flex items-center gap-3 text-[10px] text-gray-400 mb-2">
-        {factor.performance ? (
-          <span className="text-gray-500">{factor.performance.slice(0, 50)}</span>
-        ) : (
-          <span className="text-gray-300">暂无实测数据</span>
-        )}
-      </div>
-
-      {/* 第四行：操作 */}
-      <div className="flex items-center justify-between">
-        <Button
-          variant="ghost"
-          size="sm"
-          className="h-6 text-[10px] text-gray-400 hover:text-gray-600 gap-1"
-          onClick={(e) => { e.stopPropagation(); onDetail() }}
-        >
-          <Info className="h-3 w-3" />查看详情
-        </Button>
+      {/* 第三行：指标 + 操作 */}
+      <div className="flex items-center justify-between mt-auto pt-1.5 border-t border-gray-50">
+        <span className="text-[10px] text-gray-400 truncate max-w-[60%]">
+          {factor.performance ? (
+            <span className="text-gray-500">{factor.performance.slice(0, 40)}</span>
+          ) : (
+            <span className="text-gray-300">暂无实测</span>
+          )}
+        </span>
         <Button
           variant={isSelected ? 'outline' : 'outline'}
           size="sm"
           className={cn(
-            'h-6 text-[10px] gap-1',
+            'h-6 text-[10px] gap-1 shrink-0',
             isSelected
               ? 'border-amber-400 text-amber-600 bg-amber-50 hover:bg-amber-100'
               : 'border-gray-200 text-gray-500 hover:border-amber-300 hover:text-amber-600',
           )}
           onClick={(e) => { e.stopPropagation(); onToggle() }}
         >
-          {isSelected ? <><Check className="h-3 w-3" />已加入</> : '加入选择池'}
+          {isSelected ? <><Check className="h-3 w-3" />已加入</> : '加入'}
         </Button>
       </div>
     </div>
