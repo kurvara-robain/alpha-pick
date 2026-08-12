@@ -137,7 +137,14 @@ export default function Layout() {
 
       {/* Disclaimer footer */}
       <footer className="border-t border-gray-200 bg-white py-2 text-center text-[10px] text-gray-400">
-        行情为真实数据；评分、信号与回测为演示模型输出，不构成投资建议
+        <span className="inline-flex items-center gap-2">
+          <span className="inline-flex items-center gap-1"><span className="inline-block w-2 h-2 rounded-full bg-emerald-400" /> 行情:实时</span>
+          <span className="text-gray-300">|</span>
+          <span className="inline-flex items-center gap-1"><span className="inline-block w-2 h-2 rounded-full bg-amber-400" /> 因子/信号/回测:模型估算</span>
+          <span className="text-gray-300">|</span>
+          <span className="inline-flex items-center gap-1"><span className="inline-block w-2 h-2 rounded-full bg-gray-300" /> 评分/建议:演示参考</span>
+        </span>
+        <span className="ml-3 text-gray-300">不构成投资建议</span>
       </footer>
 
       <Toaster richColors position="top-center" />
