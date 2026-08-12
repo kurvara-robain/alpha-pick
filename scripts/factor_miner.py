@@ -522,6 +522,12 @@ if __name__ == '__main__':
     elif args.mode == 'mine':
         best = mine_factors(stocks, n_generate=args.generate, n_keep=args.keep)
         output_path = OUTPUT_DIR / (args.output or 'discovered_factors.json')
+        result = {
+            "factors": best,
+            "discovered_at": __import__('datetime').datetime.now().isoformat(),
+            "count": len(best),
+            "generated": args.generate,
+        }
         with open(output_path, 'w') as f:
-            json.dump(best, f, indent=2, ensure_ascii=False)
+            json.dump(result, f, indent=2, ensure_ascii=False)
         print(f"\n结果已保存: {output_path}")

@@ -142,6 +142,7 @@ export default function DiscoveredFactorsPanel() {
                 <th className="px-2 py-1.5 text-right font-medium w-16">|IC|</th>
                 <th className="px-2 py-1.5 text-right font-medium w-12">ICIR</th>
                 <th className="px-2 py-1.5 text-right font-medium w-12">天数</th>
+                <th className="px-2 py-1.5 text-center font-medium w-12">回测</th>
                 <th className="px-2 py-1.5 text-center font-medium w-16">操作</th>
               </tr>
             </thead>
@@ -158,6 +159,16 @@ export default function DiscoveredFactorsPanel() {
                   <td className="px-2 py-1.5 text-right font-mono tabular-nums text-gray-600">{f.icir.toFixed(1)}</td>
                   <td className="px-2 py-1.5 text-right font-mono tabular-nums text-gray-400">{f.valid_days}</td>
                   <td className="px-2 py-1.5 text-center">
+                    <td className="px-1 py-1.5 text-center">
+                    <a
+                      href={`/backtest?expr=${encodeURIComponent(f.expression)}`}
+                      onClick={(e) => { e.preventDefault(); window.open(`/backtest?expr=${encodeURIComponent(f.expression)}`); }}
+                      className="text-[10px] text-blue-500 hover:text-blue-700 underline"
+                      title="对该因子运行回测">
+                      回测
+                    </a>
+                  </td>
+                  <td className="px-1 py-1.5 text-center">
                     {added.has(f.expression) ? (
                       <Badge variant="outline" className="border-emerald-300 text-emerald-600 text-[10px]">已入库</Badge>
                     ) : (

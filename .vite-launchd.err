@@ -979,3 +979,137 @@ Browserslist: browsers data (caniuse-lite) is 8 months old. Please run:
 
   Plugin: vite:esbuild
   File: /Users/kurvara/Hermes_Workspace/alpha-pick/src/pages/MyStocksPage.tsx
+5:01:11 PM [vite] Internal server error: /Users/kurvara/Hermes_Workspace/alpha-pick/src/components/DiscoveredFactors.tsx: Expected corresponding JSX closing tag for <td>. (181:16)
+
+  179 |                     )}
+  180 |                   </td>
+> 181 |                 </tr>
+      |                 ^
+  182 |               ))}
+  183 |             </tbody>
+  184 |           </table>
+  Plugin: vite-plugin-inspect-dom-simple
+  File: /Users/kurvara/Hermes_Workspace/alpha-pick/src/components/DiscoveredFactors.tsx:181:16
+  179 |                      )}
+  180 |                    </td>
+  181 |                  </tr>
+      |                  ^
+  182 |                ))}
+  183 |              </tbody>
+      at constructor (/Users/kurvara/Hermes_Workspace/alpha-pick/node_modules/@babel/parser/lib/index.js:365:19)
+      at TypeScriptParserMixin.raise (/Users/kurvara/Hermes_Workspace/alpha-pick/node_modules/@babel/parser/lib/index.js:6616:19)
+      at TypeScriptParserMixin.jsxParseElementAt (/Users/kurvara/Hermes_Workspace/alpha-pick/node_modules/@babel/parser/lib/index.js:4739:16)
+      at TypeScriptParserMixin.jsxParseElementAt (/Users/kurvara/Hermes_Workspace/alpha-pick/node_modules/@babel/parser/lib/index.js:4710:32)
+      at TypeScriptParserMixin.jsxParseElement (/Users/kurvara/Hermes_Workspace/alpha-pick/node_modules/@babel/parser/lib/index.js:4761:17)
+      at TypeScriptParserMixin.parseExprAtom (/Users/kurvara/Hermes_Workspace/alpha-pick/node_modules/@babel/parser/lib/index.js:4771:19)
+      at TypeScriptParserMixin.parseExprSubscripts (/Users/kurvara/Hermes_Workspace/alpha-pick/node_modules/@babel/parser/lib/index.js:11098:23)
+      at TypeScriptParserMixin.parseUpdate (/Users/kurvara/Hermes_Workspace/alpha-pick/node_modules/@babel/parser/lib/index.js:11083:21)
+      at TypeScriptParserMixin.parseMaybeUnary (/Users/kurvara/Hermes_Workspace/alpha-pick/node_modules/@babel/parser/lib/index.js:11063:23)
+      at TypeScriptParserMixin.parseMaybeUnary (/Users/kurvara/Hermes_Workspace/alpha-pick/node_modules/@babel/parser/lib/index.js:9854:18)
+      at TypeScriptParserMixin.parseMaybeUnaryOrPrivate (/Users/kurvara/Hermes_Workspace/alpha-pick/node_modules/@babel/parser/lib/index.js:10916:61)
+      at TypeScriptParserMixin.parseExprOps (/Users/kurvara/Hermes_Workspace/alpha-pick/node_modules/@babel/parser/lib/index.js:10921:23)
+      at TypeScriptParserMixin.parseMaybeConditional (/Users/kurvara/Hermes_Workspace/alpha-pick/node_modules/@babel/parser/lib/index.js:10898:23)
+      at TypeScriptParserMixin.parseMaybeAssign (/Users/kurvara/Hermes_Workspace/alpha-pick/node_modules/@babel/parser/lib/index.js:10848:21)
+      at /Users/kurvara/Hermes_Workspace/alpha-pick/node_modules/@babel/parser/lib/index.js:9792:39
+      at TypeScriptParserMixin.tryParse (/Users/kurvara/Hermes_Workspace/alpha-pick/node_modules/@babel/parser/lib/index.js:6924:20)
+      at TypeScriptParserMixin.parseMaybeAssign (/Users/kurvara/Hermes_Workspace/alpha-pick/node_modules/@babel/parser/lib/index.js:9792:18)
+      at /Users/kurvara/Hermes_Workspace/alpha-pick/node_modules/@babel/parser/lib/index.js:10817:39
+      at TypeScriptParserMixin.allowInAnd (/Users/kurvara/Hermes_Workspace/alpha-pick/node_modules/@babel/parser/lib/index.js:12443:12)
+      at TypeScriptParserMixin.parseMaybeAssignAllowIn (/Users/kurvara/Hermes_Workspace/alpha-pick/node_modules/@babel/parser/lib/index.js:10817:17)
+      at TypeScriptParserMixin.parseMaybeAssignAllowInOrVoidPattern (/Users/kurvara/Hermes_Workspace/alpha-pick/node_modules/@babel/parser/lib/index.js:12510:17)
+      at TypeScriptParserMixin.parseParenAndDistinguishExpression (/Users/kurvara/Hermes_Workspace/alpha-pick/node_modules/@babel/parser/lib/index.js:11692:28)
+      at TypeScriptParserMixin.parseExprAtom (/Users/kurvara/Hermes_Workspace/alpha-pick/node_modules/@babel/parser/lib/index.js:11348:23)
+      at TypeScriptParserMixin.parseExprAtom (/Users/kurvara/Hermes_Workspace/alpha-pick/node_modules/@babel/parser/lib/index.js:4776:20)
+      at TypeScriptParserMixin.parseExprSubscripts (/Users/kurvara/Hermes_Workspace/alpha-pick/node_modules/@babel/parser/lib/index.js:11098:23)
+      at TypeScriptParserMixin.parseUpdate (/Users/kurvara/Hermes_Workspace/alpha-pick/node_modules/@babel/parser/lib/index.js:11083:21)
+      at TypeScriptParserMixin.parseMaybeUnary (/Users/kurvara/Hermes_Workspace/alpha-pick/node_modules/@babel/parser/lib/index.js:11063:23)
+      at TypeScriptParserMixin.parseMaybeUnary (/Users/kurvara/Hermes_Workspace/alpha-pick/node_modules/@babel/parser/lib/index.js:9854:18)
+      at TypeScriptParserMixin.parseMaybeUnaryOrPrivate (/Users/kurvara/Hermes_Workspace/alpha-pick/node_modules/@babel/parser/lib/index.js:10916:61)
+      at TypeScriptParserMixin.parseExprOps (/Users/kurvara/Hermes_Workspace/alpha-pick/node_modules/@babel/parser/lib/index.js:10921:23)
+      at TypeScriptParserMixin.parseMaybeConditional (/Users/kurvara/Hermes_Workspace/alpha-pick/node_modules/@babel/parser/lib/index.js:10898:23)
+      at TypeScriptParserMixin.parseMaybeAssign (/Users/kurvara/Hermes_Workspace/alpha-pick/node_modules/@babel/parser/lib/index.js:10848:21)
+      at TypeScriptParserMixin.parseMaybeAssign (/Users/kurvara/Hermes_Workspace/alpha-pick/node_modules/@babel/parser/lib/index.js:9803:20)
+      at TypeScriptParserMixin.parseFunctionBody (/Users/kurvara/Hermes_Workspace/alpha-pick/node_modules/@babel/parser/lib/index.js:12110:24)
+      at TypeScriptParserMixin.parseArrowExpression (/Users/kurvara/Hermes_Workspace/alpha-pick/node_modules/@babel/parser/lib/index.js:12092:10)
+      at TypeScriptParserMixin.parseParenAndDistinguishExpression (/Users/kurvara/Hermes_Workspace/alpha-pick/node_modules/@babel/parser/lib/index.js:11704:12)
+      at TypeScriptParserMixin.parseExprAtom (/Users/kurvara/Hermes_Workspace/alpha-pick/node_modules/@babel/parser/lib/index.js:11348:23)
+      at TypeScriptParserMixin.parseExprAtom (/Users/kurvara/Hermes_Workspace/alpha-pick/node_modules/@babel/parser/lib/index.js:4776:20)
+      at TypeScriptParserMixin.parseExprSubscripts (/Users/kurvara/Hermes_Workspace/alpha-pick/node_modules/@babel/parser/lib/index.js:11098:23)
+      at TypeScriptParserMixin.parseUpdate (/Users/kurvara/Hermes_Workspace/alpha-pick/node_modules/@babel/parser/lib/index.js:11083:21)
+      at TypeScriptParserMixin.parseMaybeUnary (/Users/kurvara/Hermes_Workspace/alpha-pick/node_modules/@babel/parser/lib/index.js:11063:23)
+      at TypeScriptParserMixin.parseMaybeUnary (/Users/kurvara/Hermes_Workspace/alpha-pick/node_modules/@babel/parser/lib/index.js:9854:18)
+      at TypeScriptParserMixin.parseMaybeUnaryOrPrivate (/Users/kurvara/Hermes_Workspace/alpha-pick/node_modules/@babel/parser/lib/index.js:10916:61)
+      at TypeScriptParserMixin.parseExprOps (/Users/kurvara/Hermes_Workspace/alpha-pick/node_modules/@babel/parser/lib/index.js:10921:23)
+      at TypeScriptParserMixin.parseMaybeConditional (/Users/kurvara/Hermes_Workspace/alpha-pick/node_modules/@babel/parser/lib/index.js:10898:23)
+      at TypeScriptParserMixin.parseMaybeAssign (/Users/kurvara/Hermes_Workspace/alpha-pick/node_modules/@babel/parser/lib/index.js:10848:21)
+      at TypeScriptParserMixin.parseMaybeAssign (/Users/kurvara/Hermes_Workspace/alpha-pick/node_modules/@babel/parser/lib/index.js:9803:20)
+      at /Users/kurvara/Hermes_Workspace/alpha-pick/node_modules/@babel/parser/lib/index.js:10817:39
+      at TypeScriptParserMixin.allowInAnd (/Users/kurvara/Hermes_Workspace/alpha-pick/node_modules/@babel/parser/lib/index.js:12443:12)
+      at TypeScriptParserMixin.parseMaybeAssignAllowIn (/Users/kurvara/Hermes_Workspace/alpha-pick/node_modules/@babel/parser/lib/index.js:10817:17)
+5:01:11 PM [vite] Internal server error: /Users/kurvara/Hermes_Workspace/alpha-pick/src/components/DiscoveredFactors.tsx: Expected corresponding JSX closing tag for <td>. (181:16)
+
+  179 |                     )}
+  180 |                   </td>
+> 181 |                 </tr>
+      |                 ^
+  182 |               ))}
+  183 |             </tbody>
+  184 |           </table>
+  Plugin: vite-plugin-inspect-dom-simple
+  File: /Users/kurvara/Hermes_Workspace/alpha-pick/src/components/DiscoveredFactors.tsx:181:16
+  179 |                      )}
+  180 |                    </td>
+  181 |                  </tr>
+      |                  ^
+  182 |                ))}
+  183 |              </tbody>
+      at constructor (/Users/kurvara/Hermes_Workspace/alpha-pick/node_modules/@babel/parser/lib/index.js:365:19)
+      at TypeScriptParserMixin.raise (/Users/kurvara/Hermes_Workspace/alpha-pick/node_modules/@babel/parser/lib/index.js:6616:19)
+      at TypeScriptParserMixin.jsxParseElementAt (/Users/kurvara/Hermes_Workspace/alpha-pick/node_modules/@babel/parser/lib/index.js:4739:16)
+      at TypeScriptParserMixin.jsxParseElementAt (/Users/kurvara/Hermes_Workspace/alpha-pick/node_modules/@babel/parser/lib/index.js:4710:32)
+      at TypeScriptParserMixin.jsxParseElement (/Users/kurvara/Hermes_Workspace/alpha-pick/node_modules/@babel/parser/lib/index.js:4761:17)
+      at TypeScriptParserMixin.parseExprAtom (/Users/kurvara/Hermes_Workspace/alpha-pick/node_modules/@babel/parser/lib/index.js:4771:19)
+      at TypeScriptParserMixin.parseExprSubscripts (/Users/kurvara/Hermes_Workspace/alpha-pick/node_modules/@babel/parser/lib/index.js:11098:23)
+      at TypeScriptParserMixin.parseUpdate (/Users/kurvara/Hermes_Workspace/alpha-pick/node_modules/@babel/parser/lib/index.js:11083:21)
+      at TypeScriptParserMixin.parseMaybeUnary (/Users/kurvara/Hermes_Workspace/alpha-pick/node_modules/@babel/parser/lib/index.js:11063:23)
+      at TypeScriptParserMixin.parseMaybeUnary (/Users/kurvara/Hermes_Workspace/alpha-pick/node_modules/@babel/parser/lib/index.js:9854:18)
+      at TypeScriptParserMixin.parseMaybeUnaryOrPrivate (/Users/kurvara/Hermes_Workspace/alpha-pick/node_modules/@babel/parser/lib/index.js:10916:61)
+      at TypeScriptParserMixin.parseExprOps (/Users/kurvara/Hermes_Workspace/alpha-pick/node_modules/@babel/parser/lib/index.js:10921:23)
+      at TypeScriptParserMixin.parseMaybeConditional (/Users/kurvara/Hermes_Workspace/alpha-pick/node_modules/@babel/parser/lib/index.js:10898:23)
+      at TypeScriptParserMixin.parseMaybeAssign (/Users/kurvara/Hermes_Workspace/alpha-pick/node_modules/@babel/parser/lib/index.js:10848:21)
+      at /Users/kurvara/Hermes_Workspace/alpha-pick/node_modules/@babel/parser/lib/index.js:9792:39
+      at TypeScriptParserMixin.tryParse (/Users/kurvara/Hermes_Workspace/alpha-pick/node_modules/@babel/parser/lib/index.js:6924:20)
+      at TypeScriptParserMixin.parseMaybeAssign (/Users/kurvara/Hermes_Workspace/alpha-pick/node_modules/@babel/parser/lib/index.js:9792:18)
+      at /Users/kurvara/Hermes_Workspace/alpha-pick/node_modules/@babel/parser/lib/index.js:10817:39
+      at TypeScriptParserMixin.allowInAnd (/Users/kurvara/Hermes_Workspace/alpha-pick/node_modules/@babel/parser/lib/index.js:12443:12)
+      at TypeScriptParserMixin.parseMaybeAssignAllowIn (/Users/kurvara/Hermes_Workspace/alpha-pick/node_modules/@babel/parser/lib/index.js:10817:17)
+      at TypeScriptParserMixin.parseMaybeAssignAllowInOrVoidPattern (/Users/kurvara/Hermes_Workspace/alpha-pick/node_modules/@babel/parser/lib/index.js:12510:17)
+      at TypeScriptParserMixin.parseParenAndDistinguishExpression (/Users/kurvara/Hermes_Workspace/alpha-pick/node_modules/@babel/parser/lib/index.js:11692:28)
+      at TypeScriptParserMixin.parseExprAtom (/Users/kurvara/Hermes_Workspace/alpha-pick/node_modules/@babel/parser/lib/index.js:11348:23)
+      at TypeScriptParserMixin.parseExprAtom (/Users/kurvara/Hermes_Workspace/alpha-pick/node_modules/@babel/parser/lib/index.js:4776:20)
+      at TypeScriptParserMixin.parseExprSubscripts (/Users/kurvara/Hermes_Workspace/alpha-pick/node_modules/@babel/parser/lib/index.js:11098:23)
+      at TypeScriptParserMixin.parseUpdate (/Users/kurvara/Hermes_Workspace/alpha-pick/node_modules/@babel/parser/lib/index.js:11083:21)
+      at TypeScriptParserMixin.parseMaybeUnary (/Users/kurvara/Hermes_Workspace/alpha-pick/node_modules/@babel/parser/lib/index.js:11063:23)
+      at TypeScriptParserMixin.parseMaybeUnary (/Users/kurvara/Hermes_Workspace/alpha-pick/node_modules/@babel/parser/lib/index.js:9854:18)
+      at TypeScriptParserMixin.parseMaybeUnaryOrPrivate (/Users/kurvara/Hermes_Workspace/alpha-pick/node_modules/@babel/parser/lib/index.js:10916:61)
+      at TypeScriptParserMixin.parseExprOps (/Users/kurvara/Hermes_Workspace/alpha-pick/node_modules/@babel/parser/lib/index.js:10921:23)
+      at TypeScriptParserMixin.parseMaybeConditional (/Users/kurvara/Hermes_Workspace/alpha-pick/node_modules/@babel/parser/lib/index.js:10898:23)
+      at TypeScriptParserMixin.parseMaybeAssign (/Users/kurvara/Hermes_Workspace/alpha-pick/node_modules/@babel/parser/lib/index.js:10848:21)
+      at TypeScriptParserMixin.parseMaybeAssign (/Users/kurvara/Hermes_Workspace/alpha-pick/node_modules/@babel/parser/lib/index.js:9803:20)
+      at TypeScriptParserMixin.parseFunctionBody (/Users/kurvara/Hermes_Workspace/alpha-pick/node_modules/@babel/parser/lib/index.js:12110:24)
+      at TypeScriptParserMixin.parseArrowExpression (/Users/kurvara/Hermes_Workspace/alpha-pick/node_modules/@babel/parser/lib/index.js:12092:10)
+      at TypeScriptParserMixin.parseParenAndDistinguishExpression (/Users/kurvara/Hermes_Workspace/alpha-pick/node_modules/@babel/parser/lib/index.js:11704:12)
+      at TypeScriptParserMixin.parseExprAtom (/Users/kurvara/Hermes_Workspace/alpha-pick/node_modules/@babel/parser/lib/index.js:11348:23)
+      at TypeScriptParserMixin.parseExprAtom (/Users/kurvara/Hermes_Workspace/alpha-pick/node_modules/@babel/parser/lib/index.js:4776:20)
+      at TypeScriptParserMixin.parseExprSubscripts (/Users/kurvara/Hermes_Workspace/alpha-pick/node_modules/@babel/parser/lib/index.js:11098:23)
+      at TypeScriptParserMixin.parseUpdate (/Users/kurvara/Hermes_Workspace/alpha-pick/node_modules/@babel/parser/lib/index.js:11083:21)
+      at TypeScriptParserMixin.parseMaybeUnary (/Users/kurvara/Hermes_Workspace/alpha-pick/node_modules/@babel/parser/lib/index.js:11063:23)
+      at TypeScriptParserMixin.parseMaybeUnary (/Users/kurvara/Hermes_Workspace/alpha-pick/node_modules/@babel/parser/lib/index.js:9854:18)
+      at TypeScriptParserMixin.parseMaybeUnaryOrPrivate (/Users/kurvara/Hermes_Workspace/alpha-pick/node_modules/@babel/parser/lib/index.js:10916:61)
+      at TypeScriptParserMixin.parseExprOps (/Users/kurvara/Hermes_Workspace/alpha-pick/node_modules/@babel/parser/lib/index.js:10921:23)
+      at TypeScriptParserMixin.parseMaybeConditional (/Users/kurvara/Hermes_Workspace/alpha-pick/node_modules/@babel/parser/lib/index.js:10898:23)
+      at TypeScriptParserMixin.parseMaybeAssign (/Users/kurvara/Hermes_Workspace/alpha-pick/node_modules/@babel/parser/lib/index.js:10848:21)
+      at TypeScriptParserMixin.parseMaybeAssign (/Users/kurvara/Hermes_Workspace/alpha-pick/node_modules/@babel/parser/lib/index.js:9803:20)
+      at /Users/kurvara/Hermes_Workspace/alpha-pick/node_modules/@babel/parser/lib/index.js:10817:39
+      at TypeScriptParserMixin.allowInAnd (/Users/kurvara/Hermes_Workspace/alpha-pick/node_modules/@babel/parser/lib/index.js:12443:12)
+      at TypeScriptParserMixin.parseMaybeAssignAllowIn (/Users/kurvara/Hermes_Workspace/alpha-pick/node_modules/@babel/parser/lib/index.js:10817:17)
