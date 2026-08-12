@@ -13,6 +13,7 @@ import { useAsync } from '@/lib/useAsync'
 import { fmtNum, fmtPct, pctColor } from '@/lib/format'
 import { getDB } from '@/lib/store'
 import { buildDataVersion } from '@/lib/versionMetadata'
+import { getPitContext, getActiveSnapshot } from '@/lib/dataSnapshotStore'
 import Sparkline from '@/components/Sparkline'
 import { getAlerts, checkSignalChanges, requestNotificationPermission, markAlertsRead } from '@/lib/alerts'
 import { useEffect } from 'react'
@@ -40,6 +41,9 @@ export default function HomePage() {
   const indices = indicesState.data?.indices ?? []
   const universe = universeState.data ?? []
   const dataVersion = metaState.data ? buildDataVersion(metaState.data) : null
+  // 规则8/10：全局 PIT 基准 + 活动数据快照（新鲜度/覆盖率/失败数/同步状态/来源/快照ID）
+  const pit = getPitContext()
+  const snap = getActiveSnapshot()
 
   const handleSearch = () => {
     if (!query.trim()) return
@@ -126,25 +130,37 @@ export default function HomePage() {
         </div>
       </Card>
 
-      {/* 数据健康 */}
-      {dataVersion && (
+      {/* 数据健康（规则10：新鲜度/覆盖率/失败数/同步状态/来源/快照ID） */}
+      {(snap || dataVersion) && (
         <Card className="p-4">
           <div className="flex items-center justify-between">
             <h3 className="flex items-center gap-2 text-sm font-semibold text-gray-900"><Database className="h-4 w-4 text-amber-500" />数据健康</h3>
-            <Badge variant="outline" className={dataVersion.qualityGate.passed ? 'border-emerald-300 bg-emerald-50 text-emerald-700' : 'border-rose-300 bg-rose-50 text-rose-700'}>
-              {dataVersion.qualityGate.summary}
+            <Badge variant="outline" className={snap ? (snap.syncStatus === 'synced' ? 'border-emerald-300 bg-emerald-50 text-emerald-700' : 'border-rose-300 bg-rose-50 text-rose-700') : (dataVersion?.qualityGate.passed ? 'border-emerald-300 bg-emerald-50 text-emerald-700' : 'border-rose-300 bg-rose-50 text-rose-700')}>
+              {snap ? `同步 ${snap.syncStatus} · 失败 ${snap.failureCount}` : (dataVersion?.qualityGate.summary ?? '未知')}
             </Badge>
           </div>
           <div className="mt-2 grid grid-cols-4 gap-2 text-xs">
-            {['批次', '股票池', 'K线天数', '数据源'].map((label, i) => (
-              <div key={label} className="rounded bg-gray-50 p-2 text-center">
-                <div className="text-gray-400">{label}</div>
-                <div className="mt-0.5 font-mono font-semibold text-gray-800">
-                  {[dataVersion.batchId, dataVersion.stockCount.toLocaleString(), dataVersion.klineDays, dataVersion.source][i]}
-                </div>
+            {[
+              { label: '批次', value: snap?.batchId ?? dataVersion?.batchId ?? '—' },
+              { label: '快照ID', value: snap?.id ?? '无' },
+              { label: '覆盖', value: (snap?.stockCount ?? dataVersion?.stockCount ?? 0).toLocaleString('zh-CN') },
+              { label: 'K线天数', value: snap?.klineDays ?? dataVersion?.klineDays ?? '—' },
+              { label: '数据源', value: snap?.source ?? dataVersion?.source ?? '—' },
+              { label: '同步状态', value: snap?.syncStatus ?? (dataVersion?.qualityGate.passed ? 'synced' : 'unknown') },
+              { label: '失败数', value: snap?.failureCount ?? '—' },
+              { label: 'PIT 基准', value: pit.active ? (pit.asOfDate ?? '—') : '实时' },
+            ].map((m) => (
+              <div key={m.label} className="rounded bg-gray-50 p-2 text-center">
+                <div className="text-gray-400">{m.label}</div>
+                <div className={`mt-0.5 font-mono font-semibold ${m.label === 'PIT 基准' && pit.active && !pit.pitCapable ? 'text-amber-600' : 'text-gray-800'}`}>{m.value}</div>
               </div>
             ))}
           </div>
+          {snap && (
+            <div className="mt-2 text-[10px] text-gray-400">
+              数据日期 {snap.dataDate} · 发布 {snap.publishDate} · PIT 能力 {pit.pitCapable ? '可用（无前视）' : pit.active ? '不足（近似）' : '未启用'}
+            </div>
+          )}
         </Card>
       )}
 
