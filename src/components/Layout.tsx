@@ -14,7 +14,6 @@ const NAV_GROUPS: NavGroup[] = [
     label: '市场',
     items: [
       { to: '/market', label: '市场全览' },
-      { to: '/reports', label: '研究报告' },
     ],
   },
   {
@@ -33,6 +32,7 @@ const NAV_GROUPS: NavGroup[] = [
       { to: '/research', label: '个股投研' },
       { to: '/backtest', label: '回测分析' },
       { to: '/pit', label: '时间旅行' },
+      { to: '/reports', label: '研究报告' },
     ],
   },
   {
