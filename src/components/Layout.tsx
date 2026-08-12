@@ -52,14 +52,22 @@ const NAV_GROUPS: NavGroup[] = [
 
 export default function Layout() {
   const [openGroup, setOpenGroup] = useState<string | null>(null)
+  const navRef = useRef<HTMLElement>(null)
+
+  // 点击外部关闭
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (navRef.current && !navRef.current.contains(e.target as Node)) {
+        setOpenGroup(null)
+      }
+    }
+    if (openGroup) document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [openGroup])
 
   return (
     <div className="min-h-screen bg-gray-50 font-sans text-gray-900 antialiased">
-      {/* Bloomberg-style top navigation bar */}
-      <header
-        className="sticky top-0 z-40 border-b border-gray-700 bg-[#1A1A2E]"
-        onMouseLeave={() => setOpenGroup(null)}
-      >
+      <header className="sticky top-0 z-40 border-b border-gray-700 bg-[#1A1A2E]">
         <div className="mx-auto flex h-11 max-w-7xl items-center gap-0 px-4">
           {/* Brand */}
           <Link to="/" className="mr-3 flex shrink-0 items-center gap-2 hover:opacity-80 transition-opacity">
@@ -72,48 +80,53 @@ export default function Layout() {
           </Link>
 
           {/* Navigation groups */}
-          <nav className="flex h-full items-center">
-            {NAV_GROUPS.map((group) => (
-              <div
-                key={group.label}
-                className="relative h-full"
-                onMouseEnter={() => setOpenGroup(group.label)}
-              >
-                <button
-                  className={cn(
-                    'flex h-full items-center gap-1 rounded-t-sm px-3 text-xs font-medium transition-colors',
-                    openGroup === group.label
-                      ? 'border-b-2 border-amber-500 bg-white/10 text-amber-400'
-                      : 'text-gray-400 hover:bg-white/5 hover:text-gray-200',
+          <nav ref={navRef} className="flex h-full items-center">
+            {NAV_GROUPS.map((group) => {
+              const isOpen = openGroup === group.label
+              return (
+                <div key={group.label} className="relative h-full">
+                  <button
+                    className={cn(
+                      'flex h-full items-center gap-1 rounded-t-sm px-3 text-xs font-medium transition-colors',
+                      isOpen
+                        ? 'border-b-2 border-amber-500 bg-white/10 text-amber-400'
+                        : 'text-gray-400 hover:bg-white/5 hover:text-gray-200',
+                    )}
+                    onClick={() => setOpenGroup(isOpen ? null : group.label)}
+                    aria-haspopup="menu"
+                    aria-expanded={isOpen}
+                  >
+                    {group.label}
+                    <svg className={cn('h-3 w-3 opacity-50 transition-transform', isOpen && 'rotate-180')} viewBox="0 0 10 6"><path d="M0 0l5 6 5-6z" fill="currentColor" /></svg>
+                  </button>
+                  {isOpen && (
+                    <div
+                      className="absolute left-0 top-full min-w-[140px] rounded-b border border-t-0 border-gray-600 bg-[#1A1A2E] py-1 shadow-xl"
+                      role="menu"
+                    >
+                      {group.items.map((item) => (
+                        <NavLink
+                          key={item.to}
+                          to={item.to}
+                          onClick={() => setOpenGroup(null)}
+                          role="menuitem"
+                          className={({ isActive }) =>
+                            cn(
+                              'block px-3 py-1.5 text-xs transition-colors',
+                              isActive
+                                ? 'bg-amber-500/15 text-amber-400 font-medium'
+                                : 'text-gray-400 hover:bg-white/5 hover:text-gray-200',
+                            )
+                          }
+                        >
+                          {item.label}
+                        </NavLink>
+                      ))}
+                    </div>
                   )}
-                  onClick={() => setOpenGroup(openGroup === group.label ? null : group.label)}
-                >
-                  {group.label}
-                  <svg className="h-3 w-3 opacity-50" viewBox="0 0 10 6"><path d="M0 0l5 6 5-6z" fill="currentColor" /></svg>
-                </button>
-                {openGroup === group.label && (
-                  <div className="absolute left-0 top-full min-w-[140px] rounded-b border border-t-0 border-gray-600 bg-[#1A1A2E] py-1 shadow-xl">
-                    {group.items.map((item) => (
-                      <NavLink
-                        key={item.to}
-                        to={item.to}
-                        onClick={() => setOpenGroup(null)}
-                        className={({ isActive }) =>
-                          cn(
-                            'block px-3 py-1.5 text-xs transition-colors',
-                            isActive
-                              ? 'bg-amber-500/15 text-amber-400 font-medium'
-                              : 'text-gray-400 hover:bg-white/5 hover:text-gray-200',
-                          )
-                        }
-                      >
-                        {item.label}
-                      </NavLink>
-                    ))}
-                  </div>
-                )}
-              </div>
-            ))}
+                </div>
+              )
+            })}
           </nav>
 
           {/* Right side */}
