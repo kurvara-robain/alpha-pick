@@ -28,6 +28,7 @@ export default function DiscoveredFactorsPanel() {
   const [added, setAdded] = useState<Set<string>>(new Set())
   const [error, setError] = useState('')
   const [discoveredAt, setDiscoveredAt] = useState<string | null>(null)
+  const [btMap, setBtMap] = useState<Record<string, { status: string; ic?: number; sharpe?: number }>>({})
 
   const loadFactors = async () => {
     setLoading(true); setError('')
@@ -71,6 +72,22 @@ export default function DiscoveredFactorsPanel() {
       db.factorPool.push(`mined-${Date.now()}-${Math.random().toString(36).slice(2,6)}`)
     })
     setAdded(new Set([...added, expr]))
+  }
+
+  const triggerBacktest = async (expr: string) => {
+    setBtMap(prev => ({ ...prev, [expr]: { status: 'running' } }))
+    try {
+      const res = await fetch('/api/factor/eval', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ expression: expr }),
+      })
+      if (!res.ok) throw new Error('评估失败')
+      const result = await res.json()
+      setBtMap(prev => ({ ...prev, [expr]: { status: 'done', ic: result.ic_mean ?? result.ic } }))
+    } catch (e: any) {
+      setBtMap(prev => ({ ...prev, [expr]: { status: 'error' } }))
+    }
   }
 
   const triggerMining = async () => {
@@ -159,13 +176,17 @@ export default function DiscoveredFactorsPanel() {
                   <td className="px-2 py-1.5 text-right font-mono tabular-nums text-gray-600">{f.icir.toFixed(1)}</td>
                   <td className="px-2 py-1.5 text-right font-mono tabular-nums text-gray-400">{f.valid_days}</td>
                   <td className="px-1 py-1.5 text-center">
-                    <a
-                      href={`/backtest?expr=${encodeURIComponent(f.expression)}`}
-                      onClick={(e) => { e.preventDefault(); window.open(`/backtest?expr=${encodeURIComponent(f.expression)}`); }}
-                      className="text-[10px] text-blue-500 hover:text-blue-700 underline"
-                      title="对该因子运行回测">
-                      回测
-                    </a>
+                    {(() => {
+                      const bt = btMap[f.expression]
+                      if (!bt || bt.status === 'idle') return (
+                        <button onClick={() => triggerBacktest(f.expression)}
+                          className="text-[10px] text-blue-500 hover:text-blue-700 underline cursor-pointer bg-transparent border-0 p-0"
+                          title="对该因子运行回测">回测</button>
+                      )
+                      if (bt.status === 'running') return <span className="text-[10px] text-gray-400 animate-pulse">⏳</span>
+                      if (bt.status === 'error') return <span className="text-[10px] text-rose-400" title="回测失败">✗</span>
+                      return <span className="text-[10px] text-emerald-600 font-mono" title={`IC=${bt.ic?.toFixed(3) ?? '?'} SR=${bt.sharpe?.toFixed(2) ?? '?'}`}>IC{bt.ic != null ? (bt.ic >= 0 ? '+' : '') + bt.ic.toFixed(2) : '?'}</span>
+                    })()}
                   </td>
                   <td className="px-1 py-1.5 text-center">
                     {added.has(f.expression) ? (
