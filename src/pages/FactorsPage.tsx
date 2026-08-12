@@ -370,6 +370,8 @@ export default function FactorsPage() {
             <tbody>
               {filtered.map((f) => {
                 const evalData = researchState.data?.results?.[f.id]
+                const icVal = (evalData as any)?.dic20
+                const irVal = (evalData as any)?.dicir20
                 return (
                   <tr
                     key={f.id}
@@ -385,8 +387,8 @@ export default function FactorsPage() {
                     </td>
                     <td className="px-3 py-1.5"><Badge variant="outline" className="text-[10px]">{f.category}</Badge></td>
                     <td className="px-3 py-1.5 text-gray-500">{f.origin}</td>
-                    <td className="px-3 py-1.5 text-right font-mono text-gray-600">{evalData?.ic20?.toFixed(4) ?? '–'}</td>
-                    <td className="px-3 py-1.5 text-right font-mono text-gray-600">{evalData?.icir20?.toFixed(2) ?? '–'}</td>
+                    <td className="px-3 py-1.5 text-right font-mono text-gray-600">{typeof icVal === 'number' ? icVal.toFixed(4) : '–'}</td>
+                    <td className="px-3 py-1.5 text-right font-mono text-gray-600">{typeof irVal === 'number' ? irVal.toFixed(2) : '–'}</td>
                     <td className="px-3 py-1.5 text-center">
                       <Button
                         variant="ghost"
