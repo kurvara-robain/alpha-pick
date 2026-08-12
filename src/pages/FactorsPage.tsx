@@ -4,7 +4,6 @@
 import { useMemo, useState } from 'react'
 import {
   Check,
-  Info,
   LayoutGrid,
   List,
   Search,
