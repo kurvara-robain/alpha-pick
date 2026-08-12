@@ -16,11 +16,18 @@ interface DiscoveredFactor {
   abs_ic_mean: number
 }
 
+interface DiscoveredMeta {
+  factors: DiscoveredFactor[]
+  discovered_at?: string
+  count?: number
+}
+
 export default function DiscoveredFactorsPanel() {
   const [factors, setFactors] = useState<DiscoveredFactor[]>([])
   const [loading, setLoading] = useState(false)
   const [added, setAdded] = useState<Set<string>>(new Set())
   const [error, setError] = useState('')
+  const [discoveredAt, setDiscoveredAt] = useState<string | null>(null)
 
   const loadFactors = async () => {
     setLoading(true); setError('')
@@ -28,7 +35,13 @@ export default function DiscoveredFactorsPanel() {
       const res = await fetch('/data/discovered_factors.json')
       if (!res.ok) throw new Error('暂无发现因子，运行挖掘任务后生成')
       const data = await res.json()
-      setFactors(data)
+      // Handle both array and { factors: [...], discovered_at: ... } formats
+      if (Array.isArray(data)) {
+        setFactors(data)
+      } else {
+        setFactors(data.factors ?? [])
+        setDiscoveredAt(data.discovered_at ?? null)
+      }
     } catch (e) {
       setError(e instanceof Error ? e.message : '加载失败')
     }
@@ -90,9 +103,14 @@ export default function DiscoveredFactorsPanel() {
 
   return (
     <div className="rounded-lg border border-gray-200 bg-white p-4">
-      <div className="mb-3 flex items-center justify-between">
+      <div className="flex items-center justify-between">
         <h3 className="flex items-center gap-2 text-sm font-semibold text-gray-900">
           <Dna className="h-4 w-4 text-amber-500" />自动发现因子
+          {discoveredAt && (
+            <span className="text-[10px] font-normal text-gray-400">
+              · 挖掘于 {new Date(discoveredAt).toLocaleString('zh-CN', { month:'short', day:'numeric', hour:'2-digit', minute:'2-digit' })}
+            </span>
+          )}
         </h3>
         <div className="flex items-center gap-2">
           <Button onClick={triggerMining} disabled={loading} variant="outline" size="sm" className="text-xs gap-1">
