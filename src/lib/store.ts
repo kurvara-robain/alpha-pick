@@ -357,7 +357,8 @@ function syncHoldingsToFile(db: DB): void {
 }
 
 export function saveDB(db: DB): void {
-  cache = db
+  // 深克隆打破引用稳定性，确保 subscribeDB 回调中 setDb(getDB()) 能触发 React 重渲染
+  cache = JSON.parse(JSON.stringify(db))
   localStorage.setItem(KEY, JSON.stringify(db))
   window.dispatchEvent(new Event(EVENT))
   syncHoldingsToFile(db)
