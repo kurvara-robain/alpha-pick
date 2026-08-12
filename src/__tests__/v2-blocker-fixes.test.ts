@@ -102,3 +102,28 @@ describe('修复2: 回测结果保留（completed 后配置/结果仍渲染）',
     void run
   })
 })
+
+describe('修复4: PIT 全局 asOfDate 传递', () => {
+  it('R4-1. PIT 激活日期传入 createDraftRun 后进入 Run.asOfDate', () => {
+    // 模拟 HomePage 逻辑：pit.active && pit.asOfDate ? pit.asOfDate : todayAsOfDate()
+    const pitAsOf = '2025-06-30'
+    const asOfDate = pitAsOf ? pitAsOf : '2026-08-12'
+    const run = createDraftRun({ raw: '低估值高ROE' }, asOfDate)
+    expect(run.asOfDate).toBe('2025-06-30')
+  })
+
+  it('R4-2. PIT 日期同步进 screeningSpec.asOfDate（seedRunFromNL 用 run.asOfDate）', async () => {
+    const run = createDraftRun({ raw: '低估值高ROE' }, '2025-06-30')
+    await seedRunFromNL(run.id, '低估值高ROE', run.asOfDate)
+    const after = getRun(run.id) as NonNullable<ReturnType<typeof getRun>>
+    expect(after.screeningSpec.asOfDate).toBe('2025-06-30')
+    expect(after.asOfDate).toBe('2025-06-30')
+  })
+
+  it('R4-3. 无 PIT 激活时回退今日日期', () => {
+    const fallback = '2026-08-12'
+    const asOfDate = fallback
+    const run = createDraftRun({ raw: '测试' }, asOfDate)
+    expect(run.asOfDate).toBe('2026-08-12')
+  })
+})

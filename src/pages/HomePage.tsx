@@ -54,7 +54,9 @@ export default function HomePage() {
       return
     }
     // V2 主链接线：NL → createDraftRun（搜索词完整落入 originalQuery）→ 携带 runId 跳转
-    const run = createDraftRun({ raw: query }, todayAsOfDate())
+    // 规则8：优先使用活动 PIT 基准日期（pit.active && pit.asOfDate），否则今日
+    const asOfDate = pit.active && pit.asOfDate ? pit.asOfDate : todayAsOfDate()
+    const run = createDraftRun({ raw: query }, asOfDate)
     // 规则3：NL 立即转成可执行配置（策略/因子快照），而非 0/0 空配置
     void seedRunFromNL(run.id, query, run.asOfDate)
     navigate(`${route}?runId=${run.id}`)
