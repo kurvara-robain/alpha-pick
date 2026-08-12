@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Link, NavLink, Outlet, useNavigate } from 'react-router'
+import { Link, NavLink, Outlet } from 'react-router'
 import { BrainCircuit } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Toaster } from '@/components/ui/sonner'
@@ -52,7 +52,6 @@ const NAV_GROUPS: NavGroup[] = [
 
 export default function Layout() {
   const [openGroup, setOpenGroup] = useState<string | null>(null)
-  const navigate = useNavigate()
 
   return (
     <div className="min-h-screen bg-gray-50 font-sans text-gray-900 antialiased">
@@ -87,11 +86,7 @@ export default function Layout() {
                       ? 'border-b-2 border-amber-500 bg-white/10 text-amber-400'
                       : 'text-gray-400 hover:bg-white/5 hover:text-gray-200',
                   )}
-                  onClick={() => {
-                    // Click opens dropdown or navigates to first item
-                    setOpenGroup(openGroup === group.label ? null : group.label)
-                    navigate(group.items[0].to)
-                  }}
+                  onClick={() => setOpenGroup(openGroup === group.label ? null : group.label)}
                 >
                   {group.label}
                   <svg className="h-3 w-3 opacity-50" viewBox="0 0 10 6"><path d="M0 0l5 6 5-6z" fill="currentColor" /></svg>

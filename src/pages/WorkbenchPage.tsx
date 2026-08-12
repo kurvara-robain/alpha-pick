@@ -1,7 +1,7 @@
 // ─────────────────────────────────────────────────────────────
 // P4 组合工作台：策略 × 因子组合筛选，生成并保存备选清单
 // ─────────────────────────────────────────────────────────────
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import {
   AlertTriangle,
   CheckCircle2,
@@ -59,20 +59,28 @@ export default function WorkbenchPage() {
     .map((id) => db.factors.find((f) => f.id === id))
     .filter((f): f is NonNullable<typeof f> => Boolean(f))
 
-  // 首次进入默认全选；之后跟随 db 变化修剪已失效的选项
+  // 首次进入默认全选；之后只有当因子池/策略的实际内容变化时才修剪
+  const prevPoolRef = useRef<string>('')
+  const currPoolKey = JSON.stringify([[...db.factorPool].sort(), enabledStrategies.map(s => s.id).sort()])
+
   useEffect(() => {
+    // 初始默认全选
     if (!initialized) {
       setSelectedStrategies(enabledStrategies.map((s) => s.id))
       setSelectedFactors(poolFactors.map((f) => f.id))
       setInitialized(true)
+      prevPoolRef.current = currPoolKey
       return
     }
+    // 内容未变化则跳过
+    if (prevPoolRef.current === currPoolKey) return
+    prevPoolRef.current = currPoolKey
+    // 修剪已失效的选项
     setSelectedFactors((prev) => prev.filter((id) => db.factorPool.includes(id)))
     setSelectedStrategies((prev) =>
       prev.filter((id) => enabledStrategies.some((s) => s.id === id)),
     )
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [initialized, db.factorPool, enabledStrategies])
+  }, [initialized, currPoolKey])
 
   const toggle = (
     list: string[],
