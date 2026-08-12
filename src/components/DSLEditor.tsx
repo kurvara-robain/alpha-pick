@@ -91,6 +91,7 @@ function ConditionRow({
           <Input
             className="w-20 text-xs"
             type="number"
+            aria-label={`${cond.field} 条件下限`}
             value={Array.isArray(cond.value) ? cond.value[0] : 0}
             onChange={(e) => onChange({ ...cond, value: [Number(e.target.value), Array.isArray(cond.value) ? cond.value[1] : 100] })}
           />
@@ -98,6 +99,7 @@ function ConditionRow({
           <Input
             className="w-20 text-xs"
             type="number"
+            aria-label={`${cond.field} 条件上限`}
             value={Array.isArray(cond.value) ? cond.value[1] : 100}
             onChange={(e) => onChange({ ...cond, value: [Array.isArray(cond.value) ? cond.value[0] : 0, Number(e.target.value)] })}
           />
@@ -240,7 +242,7 @@ export default function DSLEditor({
             </div>
             <div className="w-20">
               <label className="mb-1 block text-xs text-gray-500">持仓数</label>
-              <Input className="text-xs" type="number" value={topN} onChange={(e) => setTopN(Number(e.target.value))} />
+              <Input className="text-xs" type="number" aria-label="目标持仓数量" value={topN} onChange={(e) => setTopN(Number(e.target.value))} />
             </div>
             <div className="w-24">
               <label className="mb-1 block text-xs text-gray-500">调仓</label>
