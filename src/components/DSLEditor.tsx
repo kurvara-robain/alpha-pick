@@ -108,13 +108,14 @@ function ConditionRow({
         <Input
           className="w-24 text-xs"
           type="number"
+          aria-label={`${field?.label ?? cond.field} 条件值`}
           value={typeof cond.value === 'number' ? cond.value : ''}
           onChange={(e) => onChange({ ...cond, value: Number(e.target.value) })}
         />
       )}
 
       <span className="text-[10px] text-gray-400">{field?.label ?? cond.field}</span>
-      <button onClick={onRemove} className="ml-auto text-gray-400 hover:text-rose-500">
+      <button onClick={onRemove} aria-label="删除该筛选条件" className="ml-auto text-gray-400 hover:text-rose-500">
         <Trash2 className="h-3.5 w-3.5" />
       </button>
     </div>
