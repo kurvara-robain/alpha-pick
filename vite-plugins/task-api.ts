@@ -18,7 +18,7 @@ import type { Plugin, ViteDevServer } from 'vite'
 
 interface Task {
   id: string
-  type: 'backtest' | 'pit_snapshot' | 'import_csv'
+  type: 'backtest' | 'pit_snapshot' | 'import_csv' | 'factor_mine' | 'factor_eval'
   status: 'pending' | 'running' | 'completed' | 'failed'
   progress: number // 0-100
   message: string
@@ -282,7 +282,6 @@ export function taskApi(): Plugin {
           const child = spawn('/Users/kurvara/.hermes/hermes-agent/venv/bin/python3.11', [
             path.resolve('scripts/factor_miner.py'), 'mine',
             '-g', '500', '-k', '50', '-o', 'discovered_factors.json',
-            '--top-stocks', '500',
           ], { cwd: process.cwd(), env: { ...process.env, PYTHONUNBUFFERED: '1' }, timeout: 600000 })
           child.stdout?.on('data', (d: Buffer) => {
             const text = d.toString()
