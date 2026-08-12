@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react'
+import { useSearchParams } from 'react-router'
 import {
   AlertTriangle,
   CheckCircle2,
@@ -18,10 +19,17 @@ import { Input } from '@/components/ui/input'
 import { Switch } from '@/components/ui/switch'
 import { Textarea } from '@/components/ui/textarea'
 import { getDB, subscribeDB, uid, updateDB } from '@/lib/store'
+import {
+  buildScreeningSpec,
+  getRun,
+  snapshotFactors,
+  snapshotStrategies,
+  updateRunConfiguration,
+} from '@/lib/experimentRun'
 import { StrategyDebugger, LazyLoader } from '@/components/LazyComponents'
 import { DSLEditor } from '@/components/LazyComponents'
 import { parseStrategyNL, type ParseResult } from '@/lib/api'
-import type { Strategy, StrategyCondition, StrategyKind } from '@/lib/types'
+import type { ExperimentRun, Strategy, StrategyCondition, StrategyKind } from '@/lib/types'
 
 // ── 条件可读翻译 ──────────────────────────────────────────────
 
@@ -159,7 +167,10 @@ const SEED_STRATEGIES: SeedStrategy[] = [
 // ── 页面 ─────────────────────────────────────────────────────
 
 export default function StrategiesPage() {
+  const [searchParams] = useSearchParams()
+  const runId = searchParams.get('runId')
   const [strategies, setStrategies] = useState<Strategy[]>(() => getDB().strategies)
+  const [run, setRun] = useState<ExperimentRun | null>(() => (runId ? getRun(runId) : null))
   const [nlText, setNlText] = useState('')
   const [parsing, setParsing] = useState(false)
   const [parsed, setParsed] = useState<ParseResult | null>(null)
@@ -170,8 +181,36 @@ export default function StrategiesPage() {
   useEffect(() => {
     return subscribeDB(() => {
       setStrategies(getDB().strategies)
+      if (runId) setRun(getRun(runId))
     })
+    // runId 来自 URL，页面会话内不变（导航会重新挂载页面）
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
+
+  /**
+   * V2：Run 处于 draft 时，策略池变化 → 重新固化快照（updateRunConfiguration 深拷贝）。
+   * ready 以后配置冻结（服务强制），本页静默跳过 —— 修改配置必须新建 Run（规则2）。
+   */
+  const syncRunConfig = () => {
+    if (!runId) return
+    const current = getRun(runId)
+    if (!current || current.status !== 'draft') return
+    const db = getDB()
+    const enabled = db.strategies.filter((s) => s.enabled)
+    const pool = db.factors.filter((f) => db.factorPool.includes(f.id))
+    try {
+      const updated = updateRunConfiguration(
+        runId,
+        buildScreeningSpec(current.asOfDate, enabled, pool),
+        snapshotStrategies(enabled),
+        snapshotFactors(pool),
+        { mode: 'score', description: current.originalQuery.raw || '综合打分' },
+      )
+      setRun(updated)
+    } catch {
+      // 防御：配置已冻结/Run 不存在时不影响页面 legacy 操作
+    }
+  }
 
   const fixedStrategies = useMemo(() => strategies.filter((s) => s.kind === 'fixed'), [strategies])
   const tempStrategies = useMemo(() => strategies.filter((s) => s.kind === 'temp'), [strategies])
@@ -217,6 +256,7 @@ export default function StrategiesPage() {
     updateDB((db) => {
       db.strategies.push(strategy)
     })
+    syncRunConfig()
     setParsed(null)
     setNlText('')
     setStrategyName('')
@@ -238,6 +278,7 @@ export default function StrategiesPage() {
     updateDB((db) => {
       db.strategies.push(strategy)
     })
+    syncRunConfig()
   }
 
   function toggleStrategy(id: string, enabled: boolean) {
@@ -245,12 +286,14 @@ export default function StrategiesPage() {
       const s = db.strategies.find((x) => x.id === id)
       if (s) s.enabled = enabled
     })
+    syncRunConfig()
   }
 
   function deleteStrategy(id: string) {
     updateDB((db) => {
       db.strategies = db.strategies.filter((x) => x.id !== id)
     })
+    syncRunConfig()
   }
 
   return (
@@ -264,6 +307,13 @@ export default function StrategiesPage() {
         <p className="mt-1 text-sm text-gray-500">
           用自然语言描述选股思路，解析为结构化条件后确认保存，与社区共建的策略一起驱动选股。
         </p>
+        {run && (
+          <p className="mt-2 inline-flex flex-wrap items-center gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-1.5 text-xs text-amber-700">
+            V2 Run #{run.id.slice(-6)} · {run.status}
+            <span className="text-amber-500">「{run.originalQuery.raw}」</span>
+            {run.status === 'draft' ? '· 策略变化将同步固化到 Run 快照' : '· 配置已冻结（ready 后修改需新建 Run）'}
+          </p>
+        )}
       </div>
 
       {/* 自然语言建策略 */}

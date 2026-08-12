@@ -14,9 +14,11 @@ import type {
   ExperimentAttempt,
   ExperimentRun,
   ExperimentRunStatus,
+  Factor,
   FactorSnapshot,
   ResearchQuestion,
   ScreeningSpec,
+  Strategy,
   StrategySnapshot,
 } from './types'
 
@@ -342,6 +344,119 @@ export function emptyScreeningSpec(asOfDate: string): ScreeningSpec {
     rankTieBreaker: 'none',
     dataSnapshotId: 'none',
     methodVersion: 'v1.0',
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════
+// 快照与配置派生辅助（V2 主链接线）
+// 页面（Strategies/Factors/Workbench/Backtest）通过这些纯函数把
+// 当前 db 状态固化为 Run 配置，或从 Run 快照还原执行所需对象。
+// 保证：Run 是唯一事实来源，db 后续变更不影响已冻结配置。
+// ═══════════════════════════════════════════════════════════════
+
+/** 策略 → 不可变快照（深拷贝 conditions；capturedAt 取当前服务时钟） */
+export function snapshotStrategies(strategies: Strategy[]): StrategySnapshot[] {
+  const at = nowIso()
+  return strategies.map((s) => ({
+    strategyId: s.id,
+    name: s.name,
+    conditions: deepClone(s.conditions),
+    source: s.source,
+    capturedAt: at,
+  }))
+}
+
+/** 因子 → 不可变快照（深拷贝 rule；capturedAt 取当前服务时钟） */
+export function snapshotFactors(factors: Factor[]): FactorSnapshot[] {
+  const at = nowIso()
+  return factors.map((f) => ({
+    factorId: f.id,
+    name: f.name,
+    category: f.category,
+    rule: f.rule ? deepClone(f.rule) : undefined,
+    capturedAt: at,
+  }))
+}
+
+/**
+ * 从「当前启用的策略 × 因子选择池」派生可重放的 ScreeningSpec。
+ * 策略条件按策略分组（strategyConditions[i] = 第 i 个策略的条件组），
+ * 因子方向/权重取自因子 rule 与等权默认。
+ */
+export function buildScreeningSpec(asOfDate: string, strategies: Strategy[], factors: Factor[]): ScreeningSpec {
+  const factorDirections: Record<string, 'asc' | 'desc'> = {}
+  const factorWeights: Record<string, number> = {}
+  for (const f of factors) {
+    if (f.rule) factorDirections[f.id] = f.rule.dir
+    factorWeights[f.id] = 1
+  }
+  return {
+    universe: { scope: '全A', stockCount: 0, source: 'tushare' },
+    asOfDate,
+    strategyConditions: strategies.map((s) => deepClone(s.conditions)),
+    combination: 'score',
+    factorDirections,
+    factorWeights,
+    normalization: 'none',
+    missingValuePolicy: 'unsupported',
+    extremeValuePolicy: 'unsupported',
+    neutralization: { byIndustry: false, bySize: false },
+    topN: 25,
+    rebalance: 'monthly',
+    rankTieBreaker: 'none',
+    dataSnapshotId: 'none',
+    methodVersion: 'v1.0',
+  }
+}
+
+/** 快照 → 可执行 Strategy 形状（仅含筛选引擎所需字段，不依赖 db） */
+export function strategyFromSnapshot(s: StrategySnapshot): Strategy {
+  return {
+    id: s.strategyId,
+    name: s.name,
+    description: '',
+    kind: 'fixed',
+    enabled: true,
+    conditions: deepClone(s.conditions),
+    unsupported: [],
+    source: s.source,
+    createdAt: s.capturedAt,
+  }
+}
+
+/** 快照 → 可执行 Factor 形状（仅含筛选引擎所需字段，不依赖 db） */
+export function factorFromSnapshot(f: FactorSnapshot): Factor {
+  return {
+    id: f.factorId,
+    name: f.name,
+    source: 'public',
+    origin: '',
+    category: f.category,
+    definition: '',
+    applicable: '',
+    notes: '',
+    rule: f.rule ? deepClone(f.rule) : undefined,
+  }
+}
+
+/** 从 Run 派生回测执行层设置（规则6：研究配置不得来自 db，仅派生执行参数） */
+export function deriveBacktestExecution(run: ExperimentRun): BacktestExecutionSettings {
+  const endDate = run.screeningSpec.asOfDate || run.asOfDate
+  const d = new Date(`${endDate}T00:00:00Z`)
+  d.setUTCFullYear(d.getUTCFullYear() - 1)
+  const startDate = d.toISOString().slice(0, 10)
+  return {
+    startDate,
+    endDate,
+    benchmark: '000300.SH',
+    portfolioConstruction: 'equal_weight',
+    signalDelay: 't1',
+    executionPrice: 'open',
+    commission: 2.5,
+    stampDuty: 0.05,
+    slippage: 0.1,
+    limitUpDownHandling: 'skip',
+    suspensionHandling: 'skip',
   }
 }
 

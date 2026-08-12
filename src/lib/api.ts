@@ -9,11 +9,13 @@ import { getDB, uid } from './store'
 import type {
   BacktestConfig,
   BacktestResult,
+  CandidateStock,
   ChanAnalysis,
   DailyReport,
   DiagnosisAdvice,
   Factor,
   HoldingDiagnosis,
+  Strategy,
   StrategyCondition,
   WatchItem,
 } from './types'
@@ -236,16 +238,29 @@ function matchCondition(s: UniverseStock, c: StrategyCondition, ctx: ScreenCtx):
   }
 }
 
-export async function runScreening(strategyIds: string[], factorIds: string[]): Promise<WatchItem[]> {
-  await delay(900)
-  const db = getDB()
-  const strategies = db.strategies.filter((s) => strategyIds.includes(s.id) && s.enabled)
-  const factors = db.factors.filter((f) => factorIds.includes(f.id))
+/**
+ * 筛选命中记录（V2 溯源扩展）：除 WatchItem 字段外携带命中的策略 ID 与
+ * 因子实际字段值（供 CandidateSnapshot 溯源，不伪造得分）。
+ */
+export interface ScreenHit {
+  code: string
+  name: string
+  reasons: string[]
+  strategyIds: string[]
+  factorScores: Record<string, number>
+}
+
+/**
+ * 筛选引擎核心：策略/因子对象由调用方提供（V2 从 Run 快照还原，legacy 从 db 读取），
+ * 引擎本身不读 db —— 保证「配置来源可追溯、db 后续变更不影响已冻结 Run」。
+ */
+export async function screeningCore(strategies: Strategy[], factors: Factor[]): Promise<ScreenHit[]> {
   const universe = await loadUniverse()
   const ctx: ScreenCtx = { universe, rankMaps: new Map(), ruleRankMaps: new Map() }
-  const items: WatchItem[] = []
+  const items: ScreenHit[] = []
   for (const s of universe) {
     const hitBy: string[] = []
+    const hitStrategyIds: string[] = []
     let allPass = strategies.length > 0
     for (const st of strategies) {
       if (st.conditions.some((c) => !matchCondition(s, c, ctx))) {
@@ -256,11 +271,13 @@ export async function runScreening(strategyIds: string[], factorIds: string[]): 
         if (c.field === '__sort') continue // 排序指令不写进入选原因
         hitBy.push(`策略「${st.name}」：${c.raw}`)
       }
+      hitStrategyIds.push(st.id)
     }
     if (!allPass) continue
     // 带 rule 的因子是真正的过滤条件（AND 语义）：股票必须落在该因子
     // 字段的全市场截面最优 topPct% 内；字段为 null/undefined 视为不满足
     let rulePass = true
+    const factorScores: Record<string, number> = {}
     for (const f of factors) {
       if (!f.rule) continue
       if (!ruleSetFor(ctx, f.rule).has(s.code)) {
@@ -271,6 +288,7 @@ export async function runScreening(strategyIds: string[], factorIds: string[]): 
       hitBy.push(
         `因子「${f.name}」：${f.rule.field}=${v === null ? '-' : Number(v.toFixed(2))}（截面前${f.rule.topPct}%）`,
       )
+      if (v !== null) factorScores[f.id] = v
     }
     if (!rulePass) continue
     // 因子贡献：动量/低波等作为加分项写进入选原因（无 rule 的旧因子保持原行为）
@@ -285,7 +303,9 @@ export async function runScreening(strategyIds: string[], factorIds: string[]): 
       if (f.category === '情绪' && s.changePct > 2) hitBy.push(`因子「${f.name}」：当日情绪强`)
       if (f.category === '规模' && s.mktCap < 500) hitBy.push(`因子「${f.name}」：中小市值`)
     }
-    if (hitBy.length > 0) items.push({ code: s.code, name: s.name, reasons: hitBy.slice(0, 4) })
+    if (hitBy.length > 0) {
+      items.push({ code: s.code, name: s.name, reasons: hitBy.slice(0, 4), strategyIds: hitStrategyIds, factorScores })
+    }
   }
   // 排序指令：按换手率降序（以当日换手率快照为口径）
   const sortByTurnover = strategies.some((st) =>
@@ -296,6 +316,37 @@ export async function runScreening(strategyIds: string[], factorIds: string[]): 
     return items.sort((a, b) => (turnoverOf.get(b.code) ?? 0) - (turnoverOf.get(a.code) ?? 0))
   }
   return items.sort((a, b) => b.reasons.length - a.reasons.length)
+}
+
+/** legacy 路径：策略/因子 ID → db 读取 → WatchItem 列表（行为不变） */
+export async function runScreening(strategyIds: string[], factorIds: string[]): Promise<WatchItem[]> {
+  await delay(900)
+  const db = getDB()
+  const strategies = db.strategies.filter((s) => strategyIds.includes(s.id) && s.enabled)
+  const factors = db.factors.filter((f) => factorIds.includes(f.id))
+  const hits = await screeningCore(strategies, factors)
+  return hits.map((h) => ({ code: h.code, name: h.name, reasons: h.reasons }))
+}
+
+/**
+ * V2 路径：策略/因子对象来自 Run 快照（禁止从 db 重新拼装），
+ * 产出 CandidateStock 列表（含命中策略 ID 与因子实际值溯源）。
+ */
+export async function runScreeningForRun(strategies: Strategy[], factors: Factor[]): Promise<CandidateStock[]> {
+  await delay(300)
+  const hits = await screeningCore(strategies, factors)
+  const marketDataTimestamp = new Date().toISOString()
+  return hits.map((h, i) => ({
+    stockCode: h.code,
+    stockName: h.name,
+    rank: i + 1,
+    included: true,
+    strategyMatches: h.strategyIds,
+    factorScores: h.factorScores,
+    compositeScore: h.reasons.length, // 命中原因数（真实统计量，非伪造得分）
+    inclusionReasons: h.reasons,
+    marketDataTimestamp,
+  }))
 }
 
 // ── 回测（真实引擎：前复权日K，等权组合，按调仓频率再平衡）──────
@@ -311,9 +362,27 @@ function toMap(rows: { date: string; close: number }[]): Map<string, number> {
 }
 
 export async function runBacktest(config: BacktestConfig): Promise<BacktestResult> {
-  // 1. 股票池：当前策略 × 因子组合的全市场筛选结果（前 25 只等权）
+  // legacy 路径：股票池来自 db 当前策略 × 因子组合（前 25 只等权）
   const items = await runScreening(config.strategyIds, config.factorIds)
-  const pool = items.slice(0, POOL_SIZE)
+  return runBacktestWithPool(config, items.slice(0, POOL_SIZE))
+}
+
+/**
+ * V2 路径：股票池/策略/因子全部来自 Run 快照还原的对象，引擎不读 db。
+ * 回测区间等执行参数由调用方（BacktestPage 从 Run 派生）传入。
+ */
+export async function runBacktestForRun(
+  config: BacktestConfig,
+  strategies: Strategy[],
+  factors: Factor[],
+): Promise<BacktestResult> {
+  const hits = await screeningCore(strategies, factors)
+  const pool = hits.slice(0, POOL_SIZE).map((h) => ({ code: h.code, name: h.name, reasons: h.reasons }))
+  return runBacktestWithPool(config, pool)
+}
+
+/** 回测引擎主体：给定股票池与执行配置，逐期滚动计算（两路径共用） */
+async function runBacktestWithPool(config: BacktestConfig, pool: WatchItem[]): Promise<BacktestResult> {
   if (pool.length === 0) throw new Error('当前策略组合在全市场未筛出股票，无法回测，请放宽条件')
 
   // 2. 加载真实 K 线与基准
