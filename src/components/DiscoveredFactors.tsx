@@ -158,8 +158,7 @@ export default function DiscoveredFactorsPanel() {
                   </td>
                   <td className="px-2 py-1.5 text-right font-mono tabular-nums text-gray-600">{f.icir.toFixed(1)}</td>
                   <td className="px-2 py-1.5 text-right font-mono tabular-nums text-gray-400">{f.valid_days}</td>
-                  <td className="px-2 py-1.5 text-center">
-                    <td className="px-1 py-1.5 text-center">
+                  <td className="px-1 py-1.5 text-center">
                     <a
                       href={`/backtest?expr=${encodeURIComponent(f.expression)}`}
                       onClick={(e) => { e.preventDefault(); window.open(`/backtest?expr=${encodeURIComponent(f.expression)}`); }}
