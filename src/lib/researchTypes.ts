@@ -34,6 +34,8 @@ export interface ResearchFramework {
   dimensions: ResearchDimension[]
   /** 每个维度下的指标 */
   indicators: Record<string, ResearchIndicator[]> // dimensionId → indicators
+  /** 来源说明（规则21：不得暗示与机构官方合作/背书） */
+  note?: string
 }
 
 /** 单维度分析结果 */
@@ -68,6 +70,12 @@ export interface ResearchReport {
   risks: RiskItem[]
   catalysts: string[]
   peerComparison: PeerItem[]
+  /** V2 证据链绑定（规则19/20）：本报告绑定的 EvidenceItem ids */
+  evidenceIds?: string[]
+  /** V2 绑定（规则20）：本报告对应的 ResearchProject id */
+  projectId?: string
+  /** V2（规则19）：报告整体是否为模型推断（无本地实测支撑） */
+  isModelInference?: boolean
 }
 
 export interface ValuationSection {

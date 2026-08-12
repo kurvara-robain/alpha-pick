@@ -11,6 +11,7 @@ export const RESEARCH_FRAMEWORKS: ResearchFramework[] = [
     institution: '中金公司',
     description: '从盈利能力、成长性、估值安全边际三维度综合评估，侧重ROE-ROIC质量筛选，适合中长线价值发现。',
     version: '1.0',
+    note: '参考公开研究方法整理',
     dimensions: [
       { id: 'quality', name: '盈利质量', weight: 0.35, description: 'ROE、毛利率、经营现金流等盈利可持续性指标' },
       { id: 'growth', name: '成长动能', weight: 0.30, description: '收入/利润增长率、动量与预期差' },
@@ -40,6 +41,7 @@ export const RESEARCH_FRAMEWORKS: ResearchFramework[] = [
     institution: '天风证券',
     description: '从行业景气度、公司行业地位、产业链利润分配三维度入手，适合行业轮动与主题投资场景。',
     version: '1.0',
+    note: '参考公开研究方法整理',
     dimensions: [
       { id: 'industry', name: '行业景气', weight: 0.40, description: '行业涨跌幅、资金流向、板块热度' },
       { id: 'position', name: '行业地位', weight: 0.30, description: '市值排名、盈利能力行业分位' },
@@ -69,6 +71,7 @@ export const RESEARCH_FRAMEWORKS: ResearchFramework[] = [
     institution: '中信证券',
     description: '以安全边际为核心，结合DCF估值思维，从低估值、高股息、高质量三维度挖掘被低估标的。',
     version: '1.0',
+    note: '参考公开研究方法整理',
     dimensions: [
       { id: 'deepvalue', name: '深度价值', weight: 0.40, description: '低PE、低PB、低PEG等估值洼地' },
       { id: 'safety', name: '安全边际', weight: 0.30, description: '低波动、低回撤、低换手的防御属性' },
@@ -98,6 +101,7 @@ export const RESEARCH_FRAMEWORKS: ResearchFramework[] = [
     institution: '招商证券',
     description: '聚焦盈利超预期与趋势延续，结合估值修复空间，寻找成长与价值的共振点。',
     version: '1.0',
+    note: '参考公开研究方法整理',
     dimensions: [
       { id: 'earnings', name: '盈利动能', weight: 0.35, description: 'ROE水平、盈利增长预期' },
       { id: 'trend', name: '趋势强度', weight: 0.35, description: '中期价格趋势与动量持续性' },
@@ -127,6 +131,7 @@ export const RESEARCH_FRAMEWORKS: ResearchFramework[] = [
     institution: '国泰君安',
     description: '从行业相对强度、个股alpha、行业轮动信号三维度进行跨行业比较，适合自上而下配置。',
     version: '1.0',
+    note: '参考公开研究方法整理',
     dimensions: [
       { id: 'relative', name: '相对强度', weight: 0.40, description: '相对行业/市场的超额收益' },
       { id: 'alpha', name: '个股Alpha', weight: 0.35, description: '剥离行业后的独立alpha' },
@@ -156,6 +161,7 @@ export const RESEARCH_FRAMEWORKS: ResearchFramework[] = [
     institution: '华泰证券',
     description: '多因子动态权重配置，根据市场环境自适应调整因子暴露，兼顾进攻与防守。',
     version: '1.0',
+    note: '参考公开研究方法整理',
     dimensions: [
       { id: 'trend', name: '趋势跟踪', weight: 0.30, description: '市场处于趋势市时暴露动量因子' },
       { id: 'meanrev', name: '均值回归', weight: 0.25, description: '震荡市暴露反转与价值因子' },
@@ -189,6 +195,7 @@ export const RESEARCH_FRAMEWORKS: ResearchFramework[] = [
     institution: 'Zettaranc (Z哥)',
     description: '规则驱动、纪律优先的 A 股短线/波段交易系统。B1 建仓波、少妇战法、坑口战法、双枪战法等经典战法。',
     version: '1.0',
+    note: '参考公开研究方法整理',
     dimensions: [
       { id: 'b1_signal', name: 'B1 建仓波信号', weight: 0.30, description: 'KDJ J<13 黄金买点 + 两个30%原则' },
       { id: 'shaofu', name: '少妇战法', weight: 0.25, description: '缩量极致+低位+均线粘合' },
@@ -219,3 +226,11 @@ export const RESEARCH_FRAMEWORKS: ResearchFramework[] = [
     },
   },
 ]
+
+/**
+ * 框架来源说明（规则21：不得暗示与机构官方合作/背书）。
+ * 框架为参考各机构公开研究方法整理，非官方合作产物。
+ */
+export function getFrameworkNote(framework: ResearchFramework): string {
+  return framework.note ?? '参考公开研究方法整理'
+}

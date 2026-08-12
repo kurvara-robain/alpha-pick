@@ -33,12 +33,20 @@ import { loadUniverse } from '@/lib/marketData'
 import type { UniverseStock } from '@/lib/marketData'
 import { useAsync } from '@/lib/useAsync'
 import { fmtNum, fmtPct, pctColor } from '@/lib/format'
-import { RESEARCH_FRAMEWORKS } from '@/lib/researchFrameworks'
+import { RESEARCH_FRAMEWORKS, getFrameworkNote } from '@/lib/researchFrameworks'
 import { runResearch } from '@/lib/researchEngine'
 import { addDocument, listDocuments, removeDocument } from '@/lib/researchKnowledge'
 import { generateNLResearchReport, generateNarrativeSummary } from '@/lib/researchNL'
 import type { ResearchReport, DimensionResult, ResearchFramework } from '@/lib/researchTypes'
 import type { ResearchDocument } from '@/lib/researchKnowledge'
+import {
+  createResearchProject,
+  addEvidenceItem,
+  addResearchClaim,
+  generateReport,
+  getClaims,
+  getEvidence,
+} from '@/lib/researchProjectStore'
 import UploadDialog from '@/components/UploadDialog'
 import { AgentGraph, LazyLoader } from '@/components/LazyComponents'
 
@@ -449,7 +457,61 @@ export default function ResearchPage() {
       }
 
       const r = runResearch(params.stock, framework, universe)
-      setReport(r)
+
+      // ── V2 研究项目 + 证据链（规则19/20）──
+      const project = createResearchProject(
+        params.nlQuery || `${params.stock.name} 投研分析`,
+        params.stock.code,
+        params.stock.name,
+      )
+      const evidenceIds: string[] = []
+      // 维度分析 → analysis 证据
+      for (const dim of r.dimensions) {
+        const ev = addEvidenceItem(project.id, {
+          kind: 'analysis',
+          source: `框架维度: ${dim.name}`,
+          summary: dim.summary,
+          detail: dim.details
+            .map((d) => `${d.label}: ${d.value ?? '—'}（分位 ${d.percentile}%）`)
+            .join('；'),
+        })
+        evidenceIds.push(ev.id)
+      }
+      // 估值 → data 证据（行情截面数据）
+      const valEv = addEvidenceItem(project.id, {
+        kind: 'data',
+        source: '行情估值截面数据',
+        summary: `PE ${r.valuation.peCurrent ?? '亏损'}，同业中位 ${r.valuation.peHistoricalMedian ?? '—'}，PE 分位 ${r.valuation.pePercentile ?? '—'}%`,
+      })
+      evidenceIds.push(valEv.id)
+      // 风险 → analysis 证据
+      const riskEv = addEvidenceItem(project.id, {
+        kind: 'analysis',
+        source: '风险规则引擎',
+        summary: r.risks
+          .map((x) => `[${x.level}] ${x.category}: ${x.description}`)
+          .join('；'),
+      })
+      evidenceIds.push(riskEv.id)
+      // 关键结论（规则19：绑定证据）
+      addResearchClaim(
+        project.id,
+        `综合评分 ${r.overallScore}/100（${r.overallScore >= 80 ? '强烈推荐' : r.overallScore >= 60 ? '推荐' : r.overallScore >= 40 ? '中性偏谨慎' : '回避'}）`,
+        evidenceIds,
+        r.overallScore >= 60 ? 'medium' : 'low',
+      )
+      addResearchClaim(
+        project.id,
+        `识别 ${r.risks.filter((x) => x.level === '高').length} 项高风险、${r.catalysts.length} 项潜在催化`,
+        [riskEv.id],
+        'medium',
+      )
+      // 规则19：无证据的结论 → 强制标记为模型推断
+      addResearchClaim(project.id, '综合研报叙述性判断（模型生成，无本地实测证据）', [], 'low')
+
+      // 生成研究报告 V2（规则20：绑定 projectId/asOfDate/快照/结论）
+      generateReport(project.id)
+      setReport({ ...r, projectId: project.id, evidenceIds, isModelInference: false })
 
       // 生成叙述性报告（含知识库上下文）
       let kbContext = ''
@@ -492,6 +554,9 @@ export default function ResearchPage() {
                   <span className="font-mono">{report.stockCode}</span>
                   <span className="mx-2">·</span>
                   {report.framework.institution} {report.framework.name}
+                  <Badge variant="outline" className="ml-2 border-gray-200 bg-gray-50 text-[10px] font-normal text-gray-400">
+                    {getFrameworkNote(report.framework)}
+                  </Badge>
                 </p>
                 <p className="mt-2 max-w-xl text-xs text-gray-400">{report.framework.description}</p>
 
@@ -538,6 +603,37 @@ export default function ResearchPage() {
             <div className="rounded-lg border border-gray-200 bg-white p-4">
               <h3 className="mb-3 flex items-center gap-2 text-sm font-semibold text-gray-900"><FileText className="h-4 w-4 text-blue-500" />综合研报</h3>
               <pre className="whitespace-pre-wrap font-sans text-sm leading-relaxed text-gray-700">{narrativeReport}</pre>
+            </div>
+          )}
+
+          {/* V2 研究结论与证据链（规则19/20） */}
+          {report.projectId && (
+            <div className="rounded-lg border border-gray-200 bg-white p-4">
+              <h3 className="mb-3 flex items-center gap-2 text-sm font-semibold text-gray-900"><Shield className="h-4 w-4 text-amber-500" />研究结论与证据链</h3>
+              <div className="space-y-2">
+                {getClaims(report.projectId).map((c) => (
+                  <div key={c.id} className="flex flex-wrap items-center gap-2 rounded border border-gray-100 bg-gray-50 px-3 py-2 text-xs">
+                    <span className="text-gray-800">{c.claim}</span>
+                    {c.isModelInference ? (
+                      <Badge variant="outline" className="border-violet-300 bg-violet-50 text-violet-600">模型推断</Badge>
+                    ) : (
+                      <Badge variant="outline" className="border-emerald-300 bg-emerald-50 text-emerald-600">证据 {c.evidenceIds.length} 条</Badge>
+                    )}
+                    <Badge variant="outline" className="text-[10px] text-gray-400">置信 {c.confidence}</Badge>
+                  </div>
+                ))}
+              </div>
+              <div className="mt-3 border-t border-gray-100 pt-2">
+                <div className="mb-1 text-[11px] text-gray-400">证据条目（{getEvidence(report.projectId).length}）</div>
+                <div className="max-h-32 space-y-1 overflow-y-auto">
+                  {getEvidence(report.projectId).map((ev) => (
+                    <div key={ev.id} className="flex items-start gap-2 text-[11px] text-gray-500">
+                      <Badge variant="outline" className="shrink-0 text-[10px] text-gray-400">{ev.kind}</Badge>
+                      <span><span className="text-gray-700">{ev.source}</span>：{ev.summary}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
             </div>
           )}
 
