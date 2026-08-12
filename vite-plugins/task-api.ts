@@ -363,6 +363,13 @@ export function taskApi(): Plugin {
 
         // ── POST /api/tasks/pit-snapshot ──
         if (url === '/api/tasks/pit-snapshot' && req.method === 'POST') {
+          const body = await readBody(req).catch(() => '{}')
+          let date = '2025-06-30'
+          try {
+            const parsed = JSON.parse(body || '{}') as { date?: string }
+            if (parsed.date && /^\d{4}-\d{2}-\d{2}$/.test(parsed.date)) date = parsed.date
+          } catch { /* 保持默认日期 */ }
+
           const id = uid()
           const task: Task = {
             id, type: 'pit_snapshot', status: 'pending', progress: 0,
@@ -370,8 +377,9 @@ export function taskApi(): Plugin {
           }
           saveTask(task)
 
-          const scriptPath = path.resolve('scripts/pit_backfill.py')
-          runPythonScript(scriptPath, ['--task-id', id], task)
+          // 正确脚本：pit_snapshot.py 按 ≤date 口径重建截面并输出到 public/data/pit-<date>.json
+          const scriptPath = path.resolve('scripts/pit_snapshot.py')
+          runPythonScript(scriptPath, ['--date', date, '--output', `pit-${date}.json`], task)
 
           json(res, 202, { taskId: id, status: 'pending' })
           return

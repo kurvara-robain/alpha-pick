@@ -6,6 +6,13 @@ import { loadIndices, loadKline, loadMeta, loadUniverse } from './marketData'
 import type { UniverseStock } from './marketData'
 import { runChanAnalysis } from './chan'
 import { getDB, uid } from './store'
+import {
+  buildScreeningSpec,
+  getRun,
+  snapshotFactors,
+  snapshotStrategies,
+  updateRunConfiguration,
+} from './experimentRun'
 import type {
   BacktestConfig,
   BacktestResult,
@@ -97,6 +104,23 @@ const RULES: Rule[] = [
     re: /AI\s*评分\s*(大于|超过|高于|>)\s*(\d+)/,
     build: (m) => ({ field: 'aiScore', op: '>', value: Number(m[2]), raw: m[0] }),
   },
+  // ── V2 语义规则（NL→可执行配置，规则3：低估值/高ROE/盈利稳定/高增长）──
+  {
+    re: /(低估值|低估|便宜|价值型)/,
+    build: (m) => ({ field: 'pe', op: '<', value: 20, raw: `${m[0]}（PE<20）` }),
+  },
+  {
+    re: /(高ROE|高roe|ROE高|roe高|盈利能力强|高盈利)/,
+    build: (m) => ({ field: 'roe', op: '>', value: 15, raw: `${m[0]}（ROE>15%）` }),
+  },
+  {
+    re: /(盈利稳定|盈利质量|ROE稳定|roe稳定|持续盈利)/,
+    build: (m) => ({ field: 'roe', op: '>', value: 10, raw: `${m[0]}（ROE>10%）` }),
+  },
+  {
+    re: /(高增长|业绩增长|营收增长|利润增长|高成长)/,
+    build: (m) => ({ field: 'mom_rank', op: 'top_pct', value: 30, window: 20, raw: `${m[0]}（近20日涨幅前30%）` }),
+  },
 ]
 
 export async function parseStrategyNL(text: string): Promise<ParseResult> {
@@ -120,6 +144,55 @@ export async function parseStrategyNL(text: string): Promise<ParseResult> {
       ? '未识别出可用的结构化条件'
       : `识别出 ${conditions.length} 条条件` + (unsupported.length ? `，${unsupported.length} 条暂不支持` : '')
   return { conditions, unsupported, summary }
+}
+
+/**
+ * V2 规则3：NL 语义 → Run 可执行配置。
+ * 首页创建 Draft Run 后立即调用：解析查询 → 构建临时策略（conditions）+
+ * 匹配因子快照 → updateRunConfiguration 固化。使 Run 从创建起就携带
+ * 可执行语义（策略 1/N、因子 1/N），而不是 0/0 空配置。
+ * 若解析不出任何条件则保持 draft 空配置（用户可后续手动配置）。
+ */
+export async function seedRunFromNL(runId: string, query: string, asOfDate: string): Promise<boolean> {
+  const { conditions, unsupported } = await parseStrategyNL(query)
+  if (conditions.length === 0) return false
+
+  const db = getDB()
+  // 临时策略：NL 解析出的条件即策略条件（kind: 'temp'，source: 'nl'）
+  const nlStrategy: Strategy = {
+    id: uid(),
+    name: '自然语言策略',
+    description: query.slice(0, 60),
+    kind: 'temp',
+    enabled: true,
+    conditions,
+    unsupported,
+    source: 'nl',
+    createdAt: new Date().toISOString(),
+  }
+  // 匹配因子：优先 NL 语义（ROE/盈利 → f-roe；低估值/价值 → HML），否则默认池
+  const q = query
+  const wantIds: string[] = []
+  if (/(高ROE|高roe|ROE高|roe高|盈利)/.test(q)) wantIds.push('f-roe')
+  if (/(低估值|低估|价值)/.test(q)) wantIds.push('f-ff-hml')
+  if (/(动量|趋势|强势|高增长|成长)/.test(q)) wantIds.push('f-jq-roc')
+  const factorPool = wantIds.length > 0 ? wantIds : db.factorPool
+  const factors = db.factors.filter((f) => factorPool.includes(f.id))
+
+  try {
+    const current = getRun(runId)
+    if (!current || current.status !== 'draft') return false
+    updateRunConfiguration(
+      runId,
+      buildScreeningSpec(asOfDate, [nlStrategy], factors),
+      snapshotStrategies([nlStrategy]),
+      snapshotFactors(factors),
+      { mode: 'score', description: query },
+    )
+    return true
+  } catch {
+    return false
+  }
 }
 
 // ── 策略 × 因子 → 备选清单（模拟筛选引擎）─────────────────────
@@ -197,6 +270,8 @@ function matchCondition(s: UniverseStock, c: StrategyCondition, ctx: ScreenCtx):
     case 'pe':
       if (range) return s.pe > range[0] && s.pe < range[1]
       return s.pe > 0 && (c.op === '<' ? s.pe < Number(c.value) : s.pe > Number(c.value))
+    case 'roe':
+      return s.roe !== null && s.roe !== undefined && (c.op === '<' ? s.roe < Number(c.value) : s.roe > Number(c.value))
     case 'pb':
       return c.op === '<' ? s.pb < Number(c.value) : s.pb > Number(c.value)
     case 'mktCap':

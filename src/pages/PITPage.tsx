@@ -50,7 +50,20 @@ export default function PITPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ date }),
       })
-      const { taskId } = await taskRes.json()
+      // 防御：非 JSON 响应（如 dev 中间件未挂载时返回 HTML）给出可诊断错误
+      const taskBody = await taskRes.text()
+      let taskJson: { taskId?: string; status?: string; error?: string }
+      try {
+        taskJson = JSON.parse(taskBody)
+      } catch {
+        throw new Error(
+          `PIT 接口返回异常（HTTP ${taskRes.status}）：请确认 Vite 中间件已挂载（dev server），非 HTML 响应`,
+        )
+      }
+      if (!taskJson.taskId) {
+        throw new Error(taskJson.error ?? 'PIT 任务创建失败：无 taskId')
+      }
+      const { taskId } = taskJson
 
       // 轮询结果
       let attempts = 0

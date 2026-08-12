@@ -395,7 +395,7 @@ function RunBacktest({ runId }: { runId: string }) {
         </div>
       )}
 
-      {run && run.status === 'screened' && settings && (
+      {run && (run.status === 'screened' || run.status === 'running_backtest' || run.status === 'completed') && settings && (
         <>
           {/* 只读配置面板：全部来自 Run 快照 */}
           <div className="rounded-xl border border-gray-200 bg-white p-4">
@@ -453,11 +453,15 @@ function RunBacktest({ runId }: { runId: string }) {
               </div>
               <Button
                 onClick={handleRun}
-                disabled={running}
+                disabled={running || run.status === 'completed' || run.status === 'running_backtest'}
                 className="ml-auto bg-cyan-500 text-slate-950 hover:bg-cyan-400"
               >
-                {running ? <Loader2 className="size-4 animate-spin" /> : <Play className="size-4" />}
-                {running ? '回测引擎逐期滚动计算中…' : '运行回测'}
+                {running || run.status === 'running_backtest' ? <Loader2 className="size-4 animate-spin" /> : <Play className="size-4" />}
+                {running || run.status === 'running_backtest'
+                  ? '回测引擎逐期滚动计算中…'
+                  : run.status === 'completed'
+                    ? '已完成'
+                    : '运行回测'}
               </Button>
             </div>
             {record && record.status !== 'pending' && (

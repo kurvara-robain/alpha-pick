@@ -11,30 +11,12 @@ import { loadIndices, loadMeta, loadUniverse } from '@/lib/marketData'
 import { useAsync } from '@/lib/useAsync'
 import { fmtNum, fmtPct, pctColor } from '@/lib/format'
 import { createDraftRun } from '@/lib/experimentRun'
+import { seedRunFromNL } from '@/lib/api'
+import { searchRoute, todayAsOfDate } from '@/lib/nlRouting'
 import { buildDataVersion } from '@/lib/versionMetadata'
 import { getPitContext, getActiveSnapshot } from '@/lib/dataSnapshotStore'
 import { getAlerts, checkSignalChanges, requestNotificationPermission, markAlertsRead } from '@/lib/alerts'
 import { useEffect } from 'react'
-
-/**
- * 搜索意图 → 目标路由（纯函数，供测试直接验证）。
- * V2：选股/策略/因子/回测类查询进入 ExperimentRun 主链接线
- * （HomePage 会先 createDraftRun 再携带 runId 跳转）；持仓/板块等
- * 非筛选类查询走原路由，不创建 Run。
- */
-export function searchRoute(query: string): string {
-  const lower = query.toLowerCase()
-  if (lower.includes('持仓')) return '/holdings'
-  if (lower.includes('因子')) return '/factors'
-  if (lower.includes('策略') || lower.includes('回测')) return '/strategies'
-  if (lower.includes('板块')) return '/market'
-  return '/workbench'
-}
-
-/** 研究基准日期（asOfDate）：本地当日（数据快照合同由 PIT 层负责） */
-export function todayAsOfDate(): string {
-  return new Date().toISOString().slice(0, 10)
-}
 
 export default function HomePage() {
   const indicesState = useAsync(loadIndices)
@@ -49,6 +31,7 @@ export default function HomePage() {
     requestNotificationPermission()
     const added = checkSignalChanges()
     if (added > 0) setAlerts(getAlerts())
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- 一次性初始化：检查信号变更后同步提醒状态
   }, [])
 
   const loading = indicesState.loading || metaState.loading || universeState.loading
@@ -72,6 +55,8 @@ export default function HomePage() {
     }
     // V2 主链接线：NL → createDraftRun（搜索词完整落入 originalQuery）→ 携带 runId 跳转
     const run = createDraftRun({ raw: query }, todayAsOfDate())
+    // 规则3：NL 立即转成可执行配置（策略/因子快照），而非 0/0 空配置
+    void seedRunFromNL(run.id, query, run.asOfDate)
     navigate(`${route}?runId=${run.id}`)
   }
 

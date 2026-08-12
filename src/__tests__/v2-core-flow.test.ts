@@ -11,7 +11,7 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import { getDB, resetDBForTest, updateDB } from '../lib/store'
 import { invalidateMarketCaches } from '../lib/marketData'
-import { searchRoute, todayAsOfDate } from '../pages/HomePage'
+import { searchRoute, todayAsOfDate } from '../lib/nlRouting'
 import { screeningCore, runScreening } from '../lib/api'
 import {
   buildScreeningSpec,

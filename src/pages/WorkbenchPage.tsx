@@ -83,7 +83,8 @@ function RunWorkbench({ runId }: { runId: string }) {
     [runId],
   )
 
-  // draft 且快照非空 → markRunReady（快照在 Strategies/Factors 页固化）
+  // draft 且快照非空 → markRunReady（快照在 Strategies/Factors 页固化，
+  // 或 HomePage NL→seedRunFromNL 异步写入后快照从 0→N，此处重跑就绪）
   useEffect(() => {
     const current = getRun(runId)
     if (current && current.status === 'draft' && current.strategySnapshots.length > 0) {
@@ -93,7 +94,7 @@ function RunWorkbench({ runId }: { runId: string }) {
         // 配置不完整（如策略快照为空）时保持 draft，等待补齐
       }
     }
-  }, [runId, run?.status])
+  }, [runId, run?.status, run?.strategySnapshots.length])
 
   // 从 Run 快照还原可执行对象；选择项默认全选，失效项自动修剪
   const strategies = (run?.strategySnapshots ?? []).map(strategyFromSnapshot)
