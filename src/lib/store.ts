@@ -4,7 +4,10 @@
 // ─────────────────────────────────────────────────────────────
 import type {
   BacktestResult,
+  BacktestRunRecord,
+  CandidateSnapshot,
   DailyReport,
+  ExperimentRun,
   Factor,
   Holding,
   Strategy,
@@ -17,7 +20,7 @@ const KEY = 'alphamind_db_v2'
 const EVENT = 'alphamind-db'
 
 /** 种子数据版本：种子因子/策略结构变化时递增，用于老用户 localStorage 数据的迁移扩展 */
-const SEED_VERSION = 4
+const SEED_VERSION = 5
 
 export interface DB {
   strategies: Strategy[]
@@ -27,6 +30,9 @@ export interface DB {
   backtests: BacktestResult[]
   holdings: Holding[]
   reports: DailyReport[]
+  runs: ExperimentRun[] // v5：ExperimentRun 集合
+  candidateSnapshots: CandidateSnapshot[] // v5：独立候选快照集合
+  backtestRunRecords: BacktestRunRecord[] // v5：回测运行记录集合
   seedVersion?: number // 已合并到的种子版本（老数据可能缺失）
 }
 
@@ -273,6 +279,9 @@ function seed(): DB {
     backtests: [],
     holdings: [],
     reports: [],
+    runs: [],
+    candidateSnapshots: [],
+    backtestRunRecords: [],
     seedVersion: SEED_VERSION,
   }
 }
@@ -292,6 +301,10 @@ function migrateDB(db: DB): boolean {
   db.backtests ??= []
   db.holdings ??= []
   db.reports ??= []
+  // v5：新增集合初始化（旧数据 → 空数组，不伪造 ExperimentRun）
+  db.runs ??= []
+  db.candidateSnapshots ??= []
+  db.backtestRunRecords ??= []
   const upgrading = (db.seedVersion ?? 0) < SEED_VERSION
   const existingIds = new Set(db.factors.map((f) => f.id))
   const missing = seedFactors().filter((f) => !existingIds.has(f.id))
@@ -326,11 +339,20 @@ export function getDB(): DB {
       return cache
     }
   } catch {
-    /* fallthrough */
+    // 无法解析的旧数据：返回全新内存 DB，但绝不覆盖 localStorage 原始字符串。
+    // 原始数据保留在 localStorage 中以便诊断，用户可手动清除后重建。
+    cache = seed()
+    return cache
   }
   cache = seed()
   localStorage.setItem(KEY, JSON.stringify(cache))
   return cache
+}
+
+/** 仅供测试：清空内存缓存与 localStorage（不填充缓存，下一次 getDB 重新读取） */
+export function resetDBForTest(): void {
+  cache = null
+  localStorage.removeItem(KEY)
 }
 
 // ── 持仓本地文件同步（fire-and-forget，供缠论监控自动化读取）────

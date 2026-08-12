@@ -145,3 +145,160 @@ export interface DailyReport {
   holdingNotes: string[] // 持仓提示（对应 P7）
   risks: string[] // 风险提示
 }
+
+// ═══════════════════════════════════════════════════════════════
+// ExperimentRun V1 领域类型（docs/experiment-run-v1-design.md 闸门设计）
+// ═══════════════════════════════════════════════════════════════
+
+/** 用户原始研究问题 */
+export interface ResearchQuestion {
+  raw: string
+  parsedIntent?: string
+  extractedEntities?: string[]
+}
+
+/** 策略不可变快照 */
+export interface StrategySnapshot {
+  strategyId: string
+  name: string
+  conditions: StrategyCondition[] // 深拷贝
+  source: Strategy['source']
+  capturedAt: string
+}
+
+/** 因子不可变快照 */
+export interface FactorSnapshot {
+  factorId: string
+  name: string
+  category: string
+  rule?: Factor['rule']
+  capturedAt: string
+}
+
+/** 策略间组合逻辑 */
+export interface CombinationLogic {
+  mode: 'intersection' | 'union' | 'score'
+  description: string
+}
+
+/** 股票池定义（冻结） */
+export interface UniverseSnapshot {
+  scope: string
+  stockCount: number
+  source: string
+}
+
+/** 完整可执行筛选配置（闸门3：一次筛选可重放） */
+export interface ScreeningSpec {
+  universe: UniverseSnapshot
+  asOfDate: string
+  strategyConditions: StrategyCondition[][] // 每个策略一组条件
+  combination: 'intersection' | 'union' | 'score'
+  factorDirections: Record<string, 'asc' | 'desc'>
+  factorWeights: Record<string, number>
+  normalization: 'zscore' | 'rank' | 'none'
+  missingValuePolicy: 'drop' | 'fill_mean' | 'none' | 'unsupported'
+  extremeValuePolicy: 'winsorize_99' | 'none' | 'unsupported'
+  neutralization: { byIndustry: boolean; bySize: boolean }
+  topN: number
+  rebalance: 'weekly' | 'monthly'
+  rankTieBreaker: 'code' | 'name' | 'none'
+  dataSnapshotId: string
+  methodVersion: string
+}
+
+/** 回测规格（闸门4：回测开始前冻结） */
+export interface BacktestSpec {
+  startDate: string
+  endDate: string
+  benchmark: string
+  rebalance: 'weekly' | 'monthly'
+  portfolioConstruction: 'equal_weight' | 'score_weight'
+  signalDelay: 't0' | 't1'
+  executionPrice: 'open' | 'close'
+  commission: number
+  stampDuty: number
+  slippage: number
+  limitUpDownHandling: 'skip' | 'block'
+  suspensionHandling: 'skip' | 'hold'
+}
+
+export type ExperimentRunStatus =
+  | 'draft'
+  | 'ready'
+  | 'running_screen'
+  | 'screened'
+  | 'running_backtest'
+  | 'completed'
+  | 'failed'
+
+/** 单只候选股（不可变） */
+export interface CandidateStock {
+  stockCode: string
+  stockName: string
+  rank: number
+  included: boolean
+  strategyMatches: string[] // 命中的策略快照 ID
+  factorScores: Record<string, number> // 因子快照 ID → 得分
+  compositeScore: number
+  exclusionReasons?: string[]
+  inclusionReasons?: string[]
+  marketDataTimestamp: string
+}
+
+/** 独立候选快照（闸门2：不依赖 WatchList 存在） */
+export interface CandidateSnapshot {
+  id: string
+  runId: string
+  asOfDate: string
+  createdAt: string
+  universeSnapshot: UniverseSnapshot
+  dataSnapshotId: string
+  candidates: CandidateStock[]
+  configHash: string
+}
+
+/** 失败重试历史（闸门5） */
+export interface ExperimentAttempt {
+  attempt: number
+  startedAt: string
+  endedAt: string
+  status: 'screened' | 'failed' | 'completed'
+  failureReason?: string
+  candidateSnapshotId?: string
+  backtestRunId?: string
+}
+
+/** 回测运行记录（闸门4/5） */
+export interface BacktestRunRecord {
+  id: string
+  runId: string
+  spec: BacktestSpec
+  configHash: string
+  status: 'pending' | 'running' | 'completed' | 'failed'
+  failureReason?: string
+  createdAt: string
+  completedAt?: string
+  backtestResultId?: string
+}
+
+/** ExperimentRun 核心类型（唯一事实来源，闸门1） */
+export interface ExperimentRun {
+  id: string
+  originalQuery: ResearchQuestion
+  status: ExperimentRunStatus
+  asOfDate: string
+  screeningSpec: ScreeningSpec
+  strategySnapshots: StrategySnapshot[]
+  factorSnapshots: FactorSnapshot[]
+  combinationLogic: CombinationLogic
+  configHash: string
+  candidateSnapshotId?: string
+  backtestRunId?: string
+  createdAt: string
+  updatedAt: string
+  failureReason?: string
+  failureAt?: string
+  attempt: number
+  attempts: ExperimentAttempt[]
+}
