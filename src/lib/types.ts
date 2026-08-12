@@ -324,3 +324,183 @@ export interface ExperimentRun {
   attempt: number
   attempts: ExperimentAttempt[]
 }
+
+// ═══════════════════════════════════════════════════════════════
+// V2 领域类型（AlphaMind V2 重构合同 — 由主 Agent 统一管理，勿分叉定义）
+// ═══════════════════════════════════════════════════════════════
+
+/** 数据快照（规则8/9/10/12：全局 PIT 合同与数据新鲜度载体） */
+export interface DataSnapshot {
+  id: string // 'ds-20260808-001'
+  batchId: string // '2026-08-08'
+  asOfDate: string // 研究基准日期（PIT 截止日）
+  dataDate: string // 数据实际截止日（可能晚于 asOfDate = 前视风险）
+  publishDate: string // 数据可得日期
+  source: 'tushare' | 'akshare' | 'manual' | 'none'
+  stockCount: number
+  klineDays: number
+  qualityChecks: { name: string; passed: boolean; detail: string }[]
+  failureCount: number
+  syncStatus: 'synced' | 'partial' | 'failed' | 'unknown'
+  snapshotId: string
+  scriptHash?: string
+  createdAt: string
+}
+
+/** 全局 PIT 上下文（规则8：所有模块共用同一 asOfDate） */
+export interface PitContext {
+  active: boolean
+  asOfDate: string | null
+  dataSnapshotId: string | null
+  /** 不具备真实 PIT 能力的模块必须标记，不得宣称无前视偏差 */
+  pitCapable: boolean
+}
+
+/** 因子证据等级（规则11/12/13：文献/研报/本地回测/样本外/模型估算必须区分） */
+export type FactorEvidenceLevel = 'literature' | 'broker_research' | 'local_backtest' | 'oos_validation' | 'model_estimate' | 'none'
+
+export interface FactorEvidence {
+  factorId: string
+  level: FactorEvidenceLevel
+  source: string // 文献出处 / 研报名 / 本地回测 / 样本外 / 模型
+  ic?: number | null
+  icir?: number | null
+  coverage?: number // 覆盖股票数
+  evalWindow?: string // 评估区间，如 '2023-01~2026-08'
+  asOfDate?: string
+  methodVersion?: string
+  evaluatedAt: string
+  isProduction: boolean // 规则13：仅本地实测+样本外通过的才可生产
+}
+
+/** 因子定义 V2（规则12：版本/公式/方向/数据需求/证据等级） */
+export interface FactorDefinition extends Factor {
+  formula: string
+  formulaVersion: number
+  direction: 'asc' | 'desc'
+  dataRequirements: string[]
+  evidence?: FactorEvidence[]
+  coverage?: number
+  evalRange?: string
+  asOfDate?: string
+  methodVersion?: string
+  // 规则13：生产可用状态（本地实测+样本外通过）
+  productionReady: boolean
+}
+
+/** 统一持仓（规则15/16/17：Candidate/Watchlist/Paper/Actual 分离后的持仓单元） */
+export interface PortfolioPosition {
+  id: string
+  code: string
+  name: string
+  shares: number
+  avgCost: number
+  currentPrice: number | null
+  addedAt: string
+  realizedPnL: number
+}
+
+/** 统一订单（规则17：模拟组合产生订单/成交/持仓/归因） */
+export interface PortfolioOrder {
+  id: string
+  portfolioId: string
+  code: string
+  name: string
+  side: 'buy' | 'sell'
+  price: number
+  filledPrice: number
+  quantity: number
+  status: 'filled' | 'rejected' | 'partial'
+  fees: { commission: number; stampTax: number; slippage: number; total: number }
+  rejectReason?: string
+  createdAt: string
+}
+
+/** 模拟组合（规则15/17：由 CandidateSnapshot 创建，独立于 Watchlist） */
+export interface PaperPortfolio {
+  id: string
+  name: string
+  runId?: string
+  candidateSnapshotId: string
+  asOfDate: string
+  createdAt: string
+  positions: PortfolioPosition[]
+  orders: PortfolioOrder[]
+  cash: number
+  initialCapital: number
+  totalValue: number
+  realizedPnL: number
+  attribution?: PortfolioAttribution
+}
+
+/** 组合归因（规则17） */
+export interface PortfolioAttribution {
+  asOfDate: string
+  periodReturn: number
+  topContributors: { code: string; name: string; contribution: number }[]
+  topDetractors: { code: string; name: string; contribution: number }[]
+  sectorExposure: { sector: string; weight: number }[]
+}
+
+/** 实际账户（规则15：与模拟组合分离，但结构统一） */
+export interface ActualAccount {
+  id: string
+  name: string
+  broker: string
+  positions: PortfolioPosition[]
+  createdAt: string
+}
+
+/** 个股研究项目（规则20：研究报告必须绑定 ResearchProject） */
+export interface ResearchProject {
+  id: string
+  originalQuery: string
+  stockCode: string
+  stockName: string
+  status: 'draft' | 'active' | 'completed'
+  runId?: string // 可绑定 ExperimentRun
+  asOfDate?: string
+  dataSnapshotId?: string
+  createdAt: string
+  updatedAt: string
+}
+
+/** 证据条目（规则19：关键结论必须绑定 EvidenceItem） */
+export interface EvidenceItem {
+  id: string
+  projectId: string
+  kind: 'data' | 'document' | 'analysis' | 'model_inference'
+  source: string
+  summary: string
+  detail?: string
+  capturedAt: string
+  asOfDate?: string
+  dataSnapshotId?: string
+}
+
+/** 研究结论（规则19/20：绑定证据，无证据标记为模型推断） */
+export interface ResearchClaim {
+  id: string
+  projectId: string
+  claim: string
+  evidenceIds: string[]
+  confidence: 'high' | 'medium' | 'low'
+  isModelInference: boolean // 规则19：无证据 → true
+  conflicts: string[]
+  createdAt: string
+}
+
+/** 研究报告 V2（规则20：绑定项目/Run/组合/快照/asOfDate） */
+export interface ResearchReportV2 {
+  id: string
+  projectId: string
+  runId?: string
+  portfolioId?: string
+  dataSnapshotId?: string
+  asOfDate: string
+  stockCode: string
+  stockName: string
+  generatedAt: string
+  conclusion: string
+  claims: string[] // ResearchClaim ids
+}
