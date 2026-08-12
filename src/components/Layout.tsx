@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useMemo, useRef } from 'react'
 import { Link, NavLink, Outlet, useLocation } from 'react-router'
 import { BrainCircuit } from 'lucide-react'
 import { cn } from '@/lib/utils'
