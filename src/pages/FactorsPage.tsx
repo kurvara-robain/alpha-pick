@@ -13,7 +13,6 @@ import {
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
-import { Tooltip } from '@/components/ui/tooltip'
 import { cn } from '@/lib/utils'
 import { getDB, updateDB } from '@/lib/store'
 import {
@@ -24,7 +23,7 @@ import {
   updateRunConfiguration,
 } from '@/lib/experimentRun'
 import type { ExperimentRun, Factor } from '@/lib/types'
-import type { FactorResearch, FactorResearchResult } from '@/lib/marketData'
+import type { FactorResearch } from '@/lib/marketData'
 import { loadFactorResearch } from '@/lib/marketData'
 import { useAsync } from '@/lib/useAsync'
 import { FactorDiagnostics, LazyLoader, FactorExpressionEditor, DiscoveredFactors } from '@/components/LazyComponents'
@@ -104,14 +103,12 @@ function DetailDrawer({
   factor,
   isSelected,
   research,
-  selectedFactors,
   onClose,
   onToggle,
 }: {
   factor: Factor | null
   isSelected: boolean
   research: FactorResearch | null
-  selectedFactors: Factor[]
   onClose: () => void
   onToggle: () => void
 }) {
@@ -187,12 +184,12 @@ function DetailDrawer({
             <section className="rounded-lg bg-gray-50 p-3">
               <h4 className="text-xs font-semibold text-gray-700 mb-2">本系统实测</h4>
               <div className="grid grid-cols-3 gap-2 text-xs">
-                <div><span className="text-gray-400">IC20</span><br /><span className="font-mono font-semibold">{evalData.ic20?.toFixed(4) ?? '–'}</span></div>
-                <div><span className="text-gray-400">IR</span><br /><span className="font-mono font-semibold">{evalData.icir20?.toFixed(2) ?? '–'}</span></div>
-                <div><span className="text-gray-400">胜率</span><br /><span className="font-mono font-semibold">{evalData.posRatio ? (evalData.posRatio * 100).toFixed(0) + '%' : '–'}</span></div>
+                <div><span className="text-gray-400">IC20</span><br /><span className="font-mono font-semibold">{evalData.ic20?.mean?.toFixed(4) ?? '–'}</span></div>
+                <div><span className="text-gray-400">IR</span><br /><span className="font-mono font-semibold">{evalData.dicir20?.toFixed(2) ?? '–'}</span></div>
+                <div><span className="text-gray-400">胜率</span><br /><span className="font-mono font-semibold">{evalData.ic20?.posRatio ? (evalData.ic20.posRatio * 100).toFixed(0) + '%' : '–'}</span></div>
                 <div><span className="text-gray-400">多空利差</span><br /><span className="font-mono font-semibold">{evalData.spread20 ? (evalData.spread20 * 100).toFixed(1) + '%' : '–'}</span></div>
                 <div><span className="text-gray-400">方向</span><br /><span className="font-mono">{evalData.dir ?? '–'}</span></div>
-                <div><span className="text-gray-400">t值</span><br /><span className="font-mono">{evalData.tstat?.toFixed(1) ?? '–'}</span></div>
+                <div><span className="text-gray-400">t值</span><br /><span className="font-mono">{evalData.ic20?.tstat?.toFixed(1) ?? '–'}</span></div>
               </div>
             </section>
           )}
@@ -257,7 +254,6 @@ export default function FactorsPage() {
   const [pool, setPool] = useState<string[]>(() => getDB().factorPool)
   const [run, setRun] = useState<ExperimentRun | null>(() => (runId ? getRun(runId) : null))
   const [search, setSearch] = useState('')
-  const [sortBy, setSortBy] = useState<'name' | 'ic'>('ic')
   const [viewMode, setViewMode] = useState<'cards' | 'table'>('cards')
   const [activeTab, setActiveTab] = useState<'library' | 'mining' | 'diagnostics'>('library')
   const [detailFactor, setDetailFactor] = useState<Factor | null>(null)
@@ -461,7 +457,6 @@ export default function FactorsPage() {
         factor={detailFactor}
         isSelected={detailFactor ? pool.includes(detailFactor.id) : false}
         research={researchState.data ?? null}
-        selectedFactors={selectedFactors}
         onClose={() => setDetailFactor(null)}
         onToggle={() => detailFactor && toggle(detailFactor.id)}
       />

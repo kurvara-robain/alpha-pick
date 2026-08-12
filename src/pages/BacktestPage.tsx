@@ -546,7 +546,7 @@ function LegacyBacktest() {
   const [result, setResult] = useState<BacktestResult | null>(null)
 
   // 研究级回测
-  const [researchTaskId, setResearchTaskId] = useState('')
+  const [, setResearchTaskId] = useState('')
   const [researchProgress, setResearchProgress] = useState(0)
   const [researchStatus, setResearchStatus] = useState('')
   const [researchRunning, setResearchRunning] = useState(false)

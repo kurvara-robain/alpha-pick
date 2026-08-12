@@ -3,7 +3,7 @@
 // 展示当前组合的行业暴露、风险贡献、容量估算
 // ─────────────────────────────────────────────────────────────
 import { useMemo } from 'react'
-import { AlertTriangle, BarChart3, Layers, Shield } from 'lucide-react'
+import { AlertTriangle, Shield } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { loadUniverse } from '@/lib/marketData'
 import type { UniverseStock } from '@/lib/marketData'

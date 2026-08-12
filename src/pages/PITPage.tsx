@@ -4,12 +4,12 @@
 // 规则9：PIT 能力不足的数据标记 approximate/unavailable，不得宣称无前视偏差
 // ─────────────────────────────────────────────────────────────
 import { useState, useMemo } from 'react'
-import { CalendarDays, Clock, Database, Download, Search } from 'lucide-react'
+import { CalendarDays, Clock, Database, Search } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { ErrorBlock, LoadingBlock } from '@/components/AsyncStatus'
-import { fmtNum, fmtPct, pctColor } from '@/lib/format'
+import { fmtPct } from '@/lib/format'
 import {
   getPitContext,
   getActiveSnapshot,

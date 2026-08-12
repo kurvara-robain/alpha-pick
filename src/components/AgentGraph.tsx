@@ -20,7 +20,6 @@ import {
   XCircle,
 } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 
 // ═══════════════════════════════════════════════════════════════
 // Agent Graph 节点定义

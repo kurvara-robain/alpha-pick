@@ -14,14 +14,10 @@ import {
   FileSearch,
   FileText,
   Layers,
-  MessageSquare,
-  Plus,
   Search,
   Shield,
   Sparkles,
   Target,
-  Trash2,
-  Upload,
   X,
 } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
@@ -35,7 +31,7 @@ import { useAsync } from '@/lib/useAsync'
 import { fmtNum, fmtPct, pctColor } from '@/lib/format'
 import { RESEARCH_FRAMEWORKS, getFrameworkNote } from '@/lib/researchFrameworks'
 import { runResearch } from '@/lib/researchEngine'
-import { addDocument, listDocuments, removeDocument } from '@/lib/researchKnowledge'
+import { listDocuments } from '@/lib/researchKnowledge'
 import { generateNLResearchReport, generateNarrativeSummary } from '@/lib/researchNL'
 import type { ResearchReport, DimensionResult, ResearchFramework } from '@/lib/researchTypes'
 import type { ResearchDocument } from '@/lib/researchKnowledge'
@@ -419,7 +415,6 @@ export default function ResearchPage() {
   const [running, setRunning] = useState(false)
   const [refDocs, setRefDocs] = useState<ResearchDocument[]>([])
   const [kbVersion, setKbVersion] = useState(0)
-  const [uploadOpen, setUploadOpen] = useState(false)
 
   const docs = useMemo(() => listDocuments(), [kbVersion])
 

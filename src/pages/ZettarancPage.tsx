@@ -8,7 +8,6 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { cn } from '@/lib/utils'
-import { fmtNum } from '@/lib/format'
 import { computeZettarancFactors, type ZettarancFactors, type KlineData } from '@/lib/zettarancFactors'
 import { getWatchlist } from '@/lib/watchlistStore'
 import { getKnowledgeCards } from '@/lib/zettarancKnowledge'
@@ -183,7 +182,6 @@ export default function ZettarancPage() {
                             className={cn('text-[9px] cursor-pointer', s.includes('⚠️') ? 'text-rose-500 border-rose-200' : 'text-amber-600 border-amber-200')}
                             onClick={async () => {
                               // 点击战法名→查知识库
-                              const name = s.replace('⚠️','').trim()
                               const cards = await getKnowledgeCards([s])
                               if (cards[0]) setConcept(cards[0])
                             }}>

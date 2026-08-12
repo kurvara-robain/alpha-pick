@@ -7,7 +7,7 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { getBrokerStatus, syncBrokerAccount, saveBrokerConfig, importBrokerToHoldings } from '@/lib/brokerClient'
-import type { BrokerConfig, BrokerAccount } from '@/lib/brokerClient'
+import type { BrokerConfig } from '@/lib/brokerClient'
 
 export default function BrokerPanel() {
   const [brokers, setBrokers] = useState<BrokerConfig[]>([])

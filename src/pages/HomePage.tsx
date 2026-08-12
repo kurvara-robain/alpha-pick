@@ -1,21 +1,18 @@
 // V1.0 Investment Cockpit — minimal bootstrap
-import { useMemo, useState } from 'react'
+import { useState } from 'react'
 import { useNavigate } from 'react-router'
-import { BrainCircuit, ChevronRight, Database, Gauge, LayoutList, LineChart, Newspaper, Search, Shield, Sparkles, TrendingUp, Wallet, Bell } from 'lucide-react'
+import { BrainCircuit, Database, Gauge, LayoutList, LineChart, Newspaper, Shield, Sparkles, TrendingUp, Bell } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { ErrorBlock, LoadingBlock } from '@/components/AsyncStatus'
 import { loadIndices, loadMeta, loadUniverse } from '@/lib/marketData'
-import type { UniverseStock } from '@/lib/marketData'
 import { useAsync } from '@/lib/useAsync'
 import { fmtNum, fmtPct, pctColor } from '@/lib/format'
-import { getDB } from '@/lib/store'
 import { createDraftRun } from '@/lib/experimentRun'
 import { buildDataVersion } from '@/lib/versionMetadata'
 import { getPitContext, getActiveSnapshot } from '@/lib/dataSnapshotStore'
-import Sparkline from '@/components/Sparkline'
 import { getAlerts, checkSignalChanges, requestNotificationPermission, markAlertsRead } from '@/lib/alerts'
 import { useEffect } from 'react'
 
@@ -60,7 +57,6 @@ export default function HomePage() {
   if (error) return <ErrorBlock error={error} onRetry={() => {}} />
 
   const indices = indicesState.data?.indices ?? []
-  const universe = universeState.data ?? []
   const dataVersion = metaState.data ? buildDataVersion(metaState.data) : null
   // 规则8/10：全局 PIT 基准 + 活动数据快照（新鲜度/覆盖率/失败数/同步状态/来源/快照ID）
   const pit = getPitContext()

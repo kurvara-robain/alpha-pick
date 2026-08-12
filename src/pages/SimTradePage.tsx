@@ -3,15 +3,11 @@
 // ─────────────────────────────────────────────────────────────
 import { useEffect, useMemo, useState, useSyncExternalStore } from 'react'
 import {
-  ArrowDownRight,
-  ArrowUpRight,
   DollarSign,
   FolderPlus,
   History,
-  RefreshCw,
   Search,
   Trash2,
-  TrendingDown,
   TrendingUp,
   Wallet,
   X,
@@ -25,7 +21,7 @@ import { loadUniverse } from '@/lib/marketData'
 import type { UniverseStock } from '@/lib/marketData'
 import { useAsync } from '@/lib/useAsync'
 import { fmtNum, fmtPct, pctColor } from '@/lib/format'
-import { executeBuy, executeSell, loadAccount, markToMarket, resetAccount, saveAccount } from '@/lib/simTrade'
+import { executeBuy, executeSell, loadAccount, markToMarket, resetAccount } from '@/lib/simTrade'
 import type { SimAccount, SimOrder } from '@/lib/simTrade'
 import { getCandidateSnapshot, listRuns } from '@/lib/experimentRun'
 import {
@@ -35,7 +31,6 @@ import {
   markPortfolioToMarket,
   subscribePortfolios,
 } from '@/lib/portfolioStore'
-import type { PaperPortfolio } from '@/lib/types'
 
 // ═══════════════════════════════════════════════════════════════
 // 账户摘要卡片

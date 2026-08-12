@@ -111,16 +111,6 @@ function sma(values: number[], n: number): number[] {
   return result
 }
 
-function highest(values: number[], n: number, idx: number): number {
-  if (idx < n - 1) return NaN
-  return Math.max(...values.slice(idx - n + 1, idx + 1))
-}
-
-function lowest(values: number[], n: number, idx: number): number {
-  if (idx < n - 1) return NaN
-  return Math.min(...values.slice(idx - n + 1, idx + 1))
-}
-
 function std(values: number[]): number {
   if (values.length < 2) return 0
   const mean = values.reduce((s, v) => s + v, 0) / values.length
@@ -624,7 +614,7 @@ function calcWavePhase(i: number, kl: KlineData): { phase: number; retrace: numb
 // 少妇/坑口（保留）
 // ═══════════════════════════════════════════════════════════════
 
-function calcShaofu(i: number, kl: KlineData, ma5: number[], ma10: number[], ma20: number[], maStick: number):
+function calcShaofu(i: number, kl: KlineData, _ma5: number[], _ma10: number[], _ma20: number[], maStick: number):
   { score: number; isCandidate: boolean } {
   if (i < 20) return { score: 0, isCandidate: false }
   let score = 0
