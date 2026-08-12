@@ -1,654 +1,421 @@
 // ─────────────────────────────────────────────────────────────
-// P3 因子实验室：网络热门因子库 + 自研因子，管理因子选择池
+// P3 因子实验室 v3 — 紧凑摘要卡片 + 详情抽屉 + 双视图
 // ─────────────────────────────────────────────────────────────
-import { useEffect, useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
 import {
-  ArrowDown,
-  ArrowUp,
-  BarChart3,
   Check,
-  ExternalLink,
-  FlaskConical,
-  Layers,
-  Plus,
+  Info,
+  LayoutGrid,
+  List,
+  Search,
+  X,
 } from 'lucide-react'
-import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { getDB, subscribeDB, updateDB } from '@/lib/store'
-import type { Factor, FactorStatus } from '@/lib/types'
-import { loadFactorResearch, loadMlBacktest } from '@/lib/marketData'
-import type { FactorResearch, FactorResearchResult } from '@/lib/marketData'
-import { useAsync } from '@/lib/useAsync'
+import { Input } from '@/components/ui/input'
+import { Badge } from '@/components/ui/badge'
+import { Tooltip } from '@/components/ui/tooltip'
 import { cn } from '@/lib/utils'
+import { getDB, updateDB } from '@/lib/store'
+import type { Factor } from '@/lib/types'
+import type { FactorResearch, FactorResearchResult } from '@/lib/marketData'
+import { loadFactorResearch } from '@/lib/marketData'
+import { useAsync } from '@/lib/useAsync'
 import { FactorDiagnostics, LazyLoader, FactorExpressionEditor, DiscoveredFactors } from '@/components/LazyComponents'
-import {
-  CartesianGrid,
-  Line,
-  LineChart,
-  ResponsiveContainer,
-  Tooltip,
-  XAxis,
-  YAxis,
-} from 'recharts'
 
-const STATUS_STYLE: Record<FactorStatus, string> = {
-  挖掘中: 'border-gray-400 bg-slate-500/10 text-gray-500',
-  测试中: 'border-amber-500/40 bg-amber-500/10 text-amber-400',
-  已验证: 'border-emerald-500/40 bg-emerald-500/10 text-emerald-400',
-  已弃用: 'border-rose-500/40 bg-rose-500/10 text-rose-400',
-}
-
-// ── 因子实测评估（factor-research.json）──────────────────────────
-
-type SortKey = 'name' | 'kind' | 'dir' | 'dic20' | 'dicir20' | 'tstat' | 'winRate' | 'spread' | 'decay'
-
-const KIND_LABEL: Record<FactorResearchResult['kind'], { label: string; cls: string }> = {
-  composite: { label: 'ML合成', cls: 'border-amber-400/50 bg-amber-400/10 text-amber-300' },
-  core: { label: '核心', cls: 'border-cyan-500/30 bg-amber-100 text-amber-500' },
-  candidate: { label: '候选', cls: 'border-gray-400 bg-gray-100 text-gray-500' },
-}
-
-/** IC 着色：正绿负红，|值| 越大越实 */
-function icColor(v: number): string {
-  const a = Math.min(0.45 + Math.abs(v) / 0.12, 1).toFixed(2)
-  return v >= 0 ? `rgba(52, 211, 153, ${a})` : `rgba(251, 113, 133, ${a})`
-}
-
-/** 方向化均值：asc 因子 IC 取负（与 dic20 同口径，正 = 符合预期） */
-function dirMean(r: FactorResearchResult, stat: { mean: number | null } | null): number | null {
-  if (!stat || stat.mean === null) return null
-  return r.dir === 'asc' ? -stat.mean : stat.mean
-}
-
-interface EvalRow {
-  field: string
-  r: FactorResearchResult
-  tstat: number | null
-  winRate: number | null
-  decay: (number | null)[] // dic5 → dic10 → dic20 → dic40
-}
-
-/** ML 信号样本外回测卡片：净值曲线 + 指标条（loadMlBacktest 为 null 时不渲染） */
-function MlBacktestCard() {
-  const { data: bt } = useAsync(loadMlBacktest)
-  if (!bt) return null
-  const m = bt.metrics
-  const pct = (v: number) => `${v >= 0 ? '+' : ''}${v.toFixed(1)}%`
-  const posNeg = (v: number) => (v >= 0 ? 'text-emerald-300' : 'text-rose-300')
-  const chips: { label: string; value: string; cls: string }[] = [
-    { label: '区间收益（组合 vs 基准）', value: `${pct(m.totalReturn)} vs ${pct(m.benchReturn)}`, cls: 'text-gray-900' },
-    { label: '年化超额', value: pct(m.annExcess), cls: posNeg(m.annExcess) },
-    { label: '最大回撤', value: `${m.maxDrawdown.toFixed(1)}%`, cls: 'text-rose-300' },
-    { label: '夏普', value: m.sharpe.toFixed(2), cls: 'text-gray-900' },
-    { label: '周胜率（对基准）', value: `${m.winRateVsBench.toFixed(1)}%`, cls: 'text-gray-900' },
-    { label: '十分组利差（年化）', value: pct(m.decileSpreadAnn), cls: posNeg(m.decileSpreadAnn) },
-    { label: '样本外 IC', value: m.oosIc.toFixed(3), cls: posNeg(m.oosIc) },
-  ]
-  return (
-    <div className="mb-4 rounded-xl border border-amber-400/30 bg-amber-400/5 p-4">
-      <div className="mb-3 flex flex-wrap items-center gap-2">
-        <h3 className="text-sm font-semibold text-amber-200">ML 信号样本外回测</h3>
-        <Badge variant="outline" className="border-amber-400/50 bg-amber-400/10 text-[10px] text-amber-300">
-          严格样本外 · top30 周度调仓
-        </Badge>
-        {bt.metrics.pitMode ? (
-          <Badge variant="outline" className="border-emerald-400/50 bg-emerald-400/10 text-[10px] text-emerald-300">
-            时点正确口径 · 含退市股+历史ST
-          </Badge>
-        ) : (
-          <Badge variant="outline" className="border-slate-500/50 bg-slate-500/10 text-[10px] text-gray-500">
-            标准口径 · 未含退市股
-          </Badge>
-        )}
-      </div>
-      <div className="h-52 w-full">
-        <ResponsiveContainer width="100%" height="100%">
-          <LineChart data={bt.curve} margin={{ top: 8, right: 12, bottom: 0, left: 0 }}>
-            <CartesianGrid stroke="#e5e7eb" strokeDasharray="3 3" vertical={false} />
-            <XAxis
-              dataKey="date"
-              tick={{ fill: '#64748b', fontSize: 10 }}
-              tickLine={false}
-              axisLine={{ stroke: '#1e293b' }}
-              minTickGap={48}
-              tickFormatter={(d: string) => d.slice(5)}
-            />
-            <YAxis
-              domain={['auto', 'auto']}
-              tick={{ fill: '#64748b', fontSize: 10 }}
-              tickLine={false}
-              axisLine={false}
-              width={48}
-              tickFormatter={(v: number) => v.toFixed(2)}
-            />
-            <Tooltip
-              contentStyle={{
-                backgroundColor: '#0f172a',
-                border: '1px solid #334155',
-                borderRadius: 8,
-                fontSize: 12,
-              }}
-              labelStyle={{ color: '#94a3b8' }}
-              formatter={(value, name) => [
-                typeof value === 'number' ? value.toFixed(4) : '-',
-                name === 'port' ? '组合净值' : '沪深300',
-              ]}
-            />
-            <Line
-              type="monotone"
-              dataKey="port"
-              stroke="#f59e0b"
-              strokeWidth={2}
-              dot={false}
-              isAnimationActive={false}
-            />
-            <Line
-              type="monotone"
-              dataKey="bench"
-              stroke="#64748b"
-              strokeWidth={1.5}
-              strokeDasharray="5 4"
-              dot={false}
-              isAnimationActive={false}
-            />
-          </LineChart>
-        </ResponsiveContainer>
-      </div>
-      <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4 lg:grid-cols-7">
-        {chips.map((c) => (
-          <div key={c.label} className="rounded-lg border border-gray-200/80 bg-gray-50 px-2.5 py-2">
-            <div className="text-[10px] leading-tight text-gray-400">{c.label}</div>
-            <div className={cn('mt-0.5 font-mono text-sm font-semibold tabular-nums', c.cls)}>
-              {c.value}
-            </div>
-          </div>
-        ))}
-      </div>
-      <p className="mt-3 text-[11px] leading-relaxed text-gray-400">
-        {bt.method} · 更新于 {bt.updatedAt.slice(0, 10)} · 历史回测不代表未来收益
-      </p>
-    </div>
-  )
-}
-
-/** 表头排序单元格（模块级组件，避免渲染期创建组件被 React Compiler 报错） */
-function Th({
-  label,
-  k,
-  className,
-  sort,
-  onSort,
-}: {
-  label: string
-  k: SortKey
-  className?: string
-  sort: { key: SortKey; asc: boolean }
-  onSort: (key: SortKey) => void
-}) {
-  return (
-    <th
-      onClick={() => onSort(k)}
-      className={cn(
-        'cursor-pointer select-none whitespace-nowrap px-3 py-2 text-left font-medium text-gray-400 transition-colors hover:text-gray-700',
-        sort.key === k && 'text-amber-500',
-        className,
-      )}
-    >
-      <span className="inline-flex items-center gap-1">
-        {label}
-        {sort.key === k &&
-          (sort.asc ? <ArrowUp className="size-3" /> : <ArrowDown className="size-3" />)}
-      </span>
-    </th>
-  )
-}
-
-function ResearchEvalSection({ research }: { research: FactorResearch }) {
-  const [sort, setSort] = useState<{ key: SortKey; asc: boolean }>({ key: 'dic20', asc: false })
-
-  const rows = useMemo<EvalRow[]>(() => {
-    const list = Object.entries(research.results).map(([field, r]) => ({
-      field,
-      r,
-      tstat: r.ic20?.tstat ?? null,
-      winRate: r.ic20?.posRatio ?? null,
-      decay: [r.ic5, r.ic10, r.ic20, r.ic40].map((s) => dirMean(r, s)),
-    }))
-    const num = (x: EvalRow): number | null => {
-      switch (sort.key) {
-        case 'dic20': return Math.abs(x.r.dic20)
-        case 'dicir20': return Math.abs(x.r.dicir20)
-        case 'tstat': return x.tstat
-        case 'winRate': return x.winRate
-        case 'spread': return x.r.spread20
-        case 'decay': return x.decay[1] // 按 dic10 排序代表衰减档位
-        default: return null
-      }
-    }
-    const cmp = (a: EvalRow, b: EvalRow): number => {
-      if (sort.key === 'name') return a.r.name.localeCompare(b.r.name, 'zh-CN')
-      if (sort.key === 'kind') return a.r.kind.localeCompare(b.r.kind)
-      if (sort.key === 'dir') return a.r.dir.localeCompare(b.r.dir)
-      const va = num(a)
-      const vb = num(b)
-      if (va === null && vb === null) return 0
-      if (va === null) return 1 // null 沉底
-      if (vb === null) return -1
-      return va - vb
-    }
-    list.sort((a, b) => (sort.asc ? cmp(a, b) : cmp(b, a) || a.r.name.localeCompare(b.r.name, 'zh-CN')))
-    // composite（ML 合成）无条件置顶
-    return [...list.filter((x) => x.r.kind === 'composite'), ...list.filter((x) => x.r.kind !== 'composite')]
-  }, [research.results, sort])
-
-  const toggleSort = (key: SortKey) =>
-    setSort((s) => (s.key === key ? { key, asc: !s.asc } : { key, asc: false }))
-
-  const fmtNum = (v: number | null, digits = 3) => (v === null ? '–' : v.toFixed(digits))
-
-  return (
-    <section className="rounded-xl border border-gray-200 bg-white p-4 md:p-5">
-      <MlBacktestCard />
-      <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-        <h2 className="flex items-center gap-2 text-sm font-semibold text-gray-800">
-          <BarChart3 className="size-4 text-amber-500" />
-          因子实测评估
-        </h2>
-        <p className="max-w-2xl truncate text-xs text-gray-400" title={research.method}>
-          更新于 {research.updatedAt.slice(0, 10)} · {research.window.evalDates} 个评估日 /{' '}
-          {research.window.stocks} 只股票 · 方法：{research.method}
-        </p>
-      </div>
-      <div className="overflow-x-auto max-w-full">
-        <table className="w-full min-w-[860px] border-collapse text-xs">
-          <thead>
-            <tr className="border-b border-gray-200">
-              <Th label="因子名" k="name" sort={sort} onSort={toggleSort} />
-              <Th label="类别" k="kind" sort={sort} onSort={toggleSort} />
-              <Th label="方向" k="dir" sort={sort} onSort={toggleSort} />
-              <Th label="IC20" k="dic20" sort={sort} onSort={toggleSort} />
-              <Th label="ICIR" k="dicir20" sort={sort} onSort={toggleSort} />
-              <Th label="t值" k="tstat" sort={sort} onSort={toggleSort} />
-              <Th label="胜率" k="winRate" sort={sort} onSort={toggleSort} />
-              <Th label="多空利差" k="spread" sort={sort} onSort={toggleSort} />
-              <Th label="衰减 5→10→20→40" k="decay" sort={sort} onSort={toggleSort} />
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map(({ field, r, tstat, winRate, decay }) => {
-              const composite = r.kind === 'composite'
-              return (
-                <tr
-                  key={field}
-                  className={cn(
-                    'border-b border-gray-200/60',
-                    composite
-                      ? 'border-l-2 border-l-amber-400/80 bg-amber-400/5'
-                      : 'hover:bg-gray-200/30',
-                  )}
-                >
-                  <td className="whitespace-nowrap px-3 py-2">
-                    <span className={cn('font-medium', composite ? 'text-amber-200' : 'text-gray-800')}>
-                      {r.name}
-                    </span>
-                    <span className="ml-1.5 font-mono text-[10px] text-gray-300">{field}</span>
-                  </td>
-                  <td className="px-3 py-2">
-                    <Badge variant="outline" className={cn('text-[10px]', KIND_LABEL[r.kind].cls)}>
-                      {KIND_LABEL[r.kind].label}
-                    </Badge>
-                  </td>
-                  <td className="whitespace-nowrap px-3 py-2 text-gray-500">
-                    {r.dir === 'asc' ? '值小为好' : '值大为好'}
-                  </td>
-                  <td
-                    className="px-3 py-2 font-mono font-semibold tabular-nums"
-                    style={{ color: icColor(r.dic20) }}
-                  >
-                    {r.dic20 >= 0 ? '+' : ''}
-                    {r.dic20.toFixed(3)}
-                  </td>
-                  <td
-                    className="px-3 py-2 font-mono tabular-nums"
-                    style={{ color: icColor(r.dicir20) }}
-                  >
-                    {r.dicir20.toFixed(2)}
-                  </td>
-                  <td
-                    className={cn(
-                      'px-3 py-2 font-mono tabular-nums',
-                      tstat !== null && Math.abs(tstat) > 2 ? 'text-gray-800' : 'text-gray-400',
-                    )}
-                  >
-                    {fmtNum(tstat, 2)}
-                  </td>
-                  <td className="px-3 py-2 font-mono tabular-nums text-gray-500">
-                    {winRate === null ? '–' : `${(winRate * 100).toFixed(0)}%`}
-                  </td>
-                  <td
-                    className="px-3 py-2 font-mono tabular-nums"
-                    style={r.spread20 === null ? undefined : { color: icColor(r.spread20 / 100) }}
-                  >
-                    {r.spread20 === null ? '–' : `${r.spread20 >= 0 ? '+' : ''}${r.spread20.toFixed(1)}%`}
-                  </td>
-                  <td className="whitespace-nowrap px-3 py-2 font-mono tabular-nums">
-                    {decay.map((d, i) => (
-                      <span key={i}>
-                        {i > 0 && <span className="text-slate-700">→</span>}
-                        {d === null ? (
-                          <span className="text-gray-300">–</span>
-                        ) : (
-                          <span style={{ color: icColor(d) }}>{d.toFixed(3)}</span>
-                        )}
-                      </span>
-                    ))}
-                  </td>
-                </tr>
-              )
-            })}
-          </tbody>
-        </table>
-      </div>
-    </section>
-  )
-}
-
-function Field({ label, value }: { label: string; value?: string }) {
-  if (!value) return null
-  return (
-    <div>
-      <div className="text-xs font-medium text-gray-400">{label}</div>
-      <p className="mt-1 text-sm leading-relaxed text-gray-700">{value}</p>
-    </div>
-  )
-}
-
-/** 本系统实测徽区块：dic20 为方向化 IC20（正 = 符合因子预期方向）；显著(|t|>2)且为正绿调、为负红调，不显著灰调。
- *  ic20 及其指标可能为 null（如 ML 合成条目缺 tstat），逐一防御。 */
-function ResearchBadge({ r }: { r: FactorResearchResult }) {
-  const ic20 = r.ic20
-  if (!ic20) return null
-  const dirSign = r.dir === 'asc' ? -1 : 1
-  const dirIr = ic20.ir === null ? null : dirSign * ic20.ir // 方向化 IR，与 dic20 同口径（正 = 符合预期）
-  const significant = ic20.tstat !== null && Math.abs(ic20.tstat) > 2
-  const tone = !significant
-    ? 'border-gray-300 bg-gray-200/40 text-gray-500'
-    : r.dic20 > 0
-      ? 'border-emerald-500/40 bg-emerald-500/10 text-emerald-300'
-      : 'border-rose-500/40 bg-rose-500/10 text-rose-300'
-  const signed = (v: number, digits: number) => (v > 0 ? `+${v.toFixed(digits)}` : v.toFixed(digits))
-  return (
-    <div className={cn('rounded-lg border px-3 py-2 text-xs leading-relaxed', tone)}>
-      本系统实测（近1年全A）IC20 {signed(r.dic20, 3)}（方向化）
-      {dirIr !== null && <> · IR {dirIr.toFixed(1)}（方向化）</>}
-      {r.spread20 !== null && <> · 多空 {signed(r.spread20, 1)}%</>} · {ic20.dates} 个评估日
-    </div>
-  )
-}
-
+// ═══════════════════════════════════════════════════════════════
+// 紧凑摘要卡片
+// ═══════════════════════════════════════════════════════════════
 function FactorCard({
   factor,
-  inPool,
-  research,
+  isSelected,
   onToggle,
+  onDetail,
 }: {
   factor: Factor
-  inPool: boolean
-  research?: FactorResearchResult
-  onToggle: (id: string) => void
+  isSelected: boolean
+  onToggle: () => void
+  onDetail: () => void
 }) {
-  const deprecated = factor.status === '已弃用'
   return (
     <div
       className={cn(
-        'relative flex flex-col gap-3 rounded-xl border bg-white p-5 transition-colors',
-        inPool
-          ? 'border-amber-400 shadow-[0_0_0_1px_rgba(34,211,238,0.2)]'
-          : 'border-gray-200',
-        deprecated && 'opacity-60',
+        'rounded-lg border p-3 transition-colors cursor-pointer',
+        isSelected
+          ? 'border-amber-400 bg-amber-50/50 shadow-sm'
+          : 'border-gray-200 bg-white hover:border-amber-200 hover:bg-amber-50/20',
       )}
+      onClick={onDetail}
     >
-      {factor.status && (
-        <Badge
-          variant="outline"
-          className={cn('absolute right-4 top-4', STATUS_STYLE[factor.status])}
-        >
-          {factor.status}
-        </Badge>
-      )}
-
-      <div className="pr-16">
-        <h3
-          className={cn(
-            'text-base font-semibold text-gray-900',
-            deprecated && 'line-through decoration-rose-400/60',
-          )}
-        >
-          {factor.name}
-        </h3>
-        <div className="mt-2 flex flex-wrap items-center gap-2">
-          {factor.sourceUrl ? (
-            <a
-              href={factor.sourceUrl}
-              target="_blank"
-              rel="noreferrer"
-              title="打开外部来源"
-              className="inline-flex items-center gap-1 rounded-full border border-gray-300 bg-gray-100 px-2.5 py-0.5 text-xs font-medium text-gray-500 transition-colors hover:border-cyan-500/40 hover:text-amber-500"
-            >
-              {factor.origin}
-              <ExternalLink className="size-3" />
-            </a>
-          ) : (
-            <Badge
-              variant="outline"
-              className="border-gray-300 bg-gray-100 text-gray-500"
-            >
-              {factor.origin}
-            </Badge>
-          )}
-          <Badge
-            variant="outline"
-            className="border-cyan-500/30 bg-amber-100 text-amber-500"
-          >
-            {factor.category}
-          </Badge>
+      {/* 第一行：名称 + 标签 */}
+      <div className="flex items-start justify-between gap-2 mb-1.5">
+        <div className="flex-1 min-w-0">
+          <h4 className="text-sm font-semibold text-gray-900 truncate">{factor.name}</h4>
+          <p className="text-[10px] text-gray-400 font-mono truncate">{factor.id}</p>
+        </div>
+        <div className="flex items-center gap-1 shrink-0">
+          <Badge variant="outline" className="text-[9px] px-1.5 py-0 border-gray-300 text-gray-500">{factor.category}</Badge>
+          <Badge variant="outline" className="text-[9px] px-1.5 py-0 border-gray-300 text-gray-400">{factor.origin}</Badge>
         </div>
       </div>
 
-      <div className="flex flex-1 flex-col gap-3 border-t border-gray-200/80 pt-3">
-        <Field label="因子定义与计算逻辑" value={factor.definition} />
-        <Field label="适用市场环境与范围" value={factor.applicable} />
-        <Field label="使用规范与注意事项" value={factor.notes} />
-        {factor.rule && (
-          <p className="text-xs leading-relaxed text-amber-500/80">
-            规则：{factor.rule.field} {factor.rule.dir === 'asc' ? '升序' : '降序'}前 {factor.rule.topPct}%（
-            {factor.rule.dir === 'asc' ? '值小优先' : '值大优先'}）
-          </p>
+      {/* 第二行：一句话简介 */}
+      <p className="text-xs text-gray-500 line-clamp-2 leading-relaxed mb-2">
+        {factor.definition?.slice(0, 100) ?? factor.notes?.slice(0, 100) ?? '暂无简介'}
+      </p>
+
+      {/* 第三行：指标 */}
+      <div className="flex items-center gap-3 text-[10px] text-gray-400 mb-2">
+        {factor.performance ? (
+          <span className="text-gray-500">{factor.performance.slice(0, 50)}</span>
+        ) : (
+          <span className="text-gray-300">暂无实测数据</span>
         )}
-        {factor.performance && (
-          <div>
-            <div className="text-xs font-medium text-gray-400">历史有效性表现</div>
-            <p className="mt-1 text-sm leading-relaxed text-emerald-300/90">
-              {factor.performance}
-            </p>
-          </div>
-        )}
-        {research && <ResearchBadge r={research} />}
       </div>
 
-      <Button
-        size="sm"
-        variant={inPool ? 'secondary' : 'outline'}
-        onClick={() => onToggle(factor.id)}
-        className={cn(
-          'mt-1 w-full',
-          inPool
-            ? 'border border-cyan-500/40 bg-amber-100 text-amber-500 hover:bg-cyan-500/20'
-            : 'border-gray-300 text-gray-700 hover:border-cyan-500/40 hover:text-amber-500',
-        )}
-      >
-        {inPool ? (
-          <>
-            <Check className="size-4" /> 已在选择池 · 点击移出
-          </>
-        ) : (
-          <>
-            <Plus className="size-4" /> 加入选择池
-          </>
-        )}
-      </Button>
+      {/* 第四行：操作 */}
+      <div className="flex items-center justify-between">
+        <Button
+          variant="ghost"
+          size="sm"
+          className="h-6 text-[10px] text-gray-400 hover:text-gray-600 gap-1"
+          onClick={(e) => { e.stopPropagation(); onDetail() }}
+        >
+          <Info className="h-3 w-3" />查看详情
+        </Button>
+        <Button
+          variant={isSelected ? 'outline' : 'outline'}
+          size="sm"
+          className={cn(
+            'h-6 text-[10px] gap-1',
+            isSelected
+              ? 'border-amber-400 text-amber-600 bg-amber-50 hover:bg-amber-100'
+              : 'border-gray-200 text-gray-500 hover:border-amber-300 hover:text-amber-600',
+          )}
+          onClick={(e) => { e.stopPropagation(); onToggle() }}
+        >
+          {isSelected ? <><Check className="h-3 w-3" />已加入</> : '加入选择池'}
+        </Button>
+      </div>
     </div>
   )
 }
 
+// ═══════════════════════════════════════════════════════════════
+// 右侧详情抽屉
+// ═══════════════════════════════════════════════════════════════
+function DetailDrawer({
+  factor,
+  isSelected,
+  research,
+  selectedFactors,
+  onClose,
+  onToggle,
+}: {
+  factor: Factor | null
+  isSelected: boolean
+  research: FactorResearch | null
+  selectedFactors: Factor[]
+  onClose: () => void
+  onToggle: () => void
+}) {
+  if (!factor) return null
+
+  const evalData = research?.results?.[factor.id.replace('f-jq-', '').replace('f-self-', '')]
+    ?? research?.results?.[factor.id]
+
+  return (
+    <>
+      {/* 遮罩 */}
+      <div className="fixed inset-0 z-40 bg-black/20" onClick={onClose} />
+      {/* 抽屉 */}
+      <div className="fixed right-0 top-0 z-50 h-full w-[42%] min-w-[360px] max-w-[560px] border-l border-gray-200 bg-white shadow-2xl overflow-y-auto">
+        <div className="sticky top-0 z-10 flex items-center justify-between border-b border-gray-100 bg-white px-5 py-3">
+          <div>
+            <h3 className="text-base font-bold text-gray-900">{factor.name}</h3>
+            <p className="text-[11px] text-gray-400 font-mono">{factor.id}</p>
+          </div>
+          <div className="flex items-center gap-2">
+            <Button
+              variant={isSelected ? 'outline' : 'outline'}
+              size="sm"
+              className={cn(
+                'h-7 text-xs',
+                isSelected
+                  ? 'border-amber-400 text-amber-600'
+                  : 'border-gray-200 text-gray-500 hover:border-amber-300',
+              )}
+              onClick={onToggle}
+            >
+              {isSelected ? '移出选择池' : '加入选择池'}
+            </Button>
+            <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={onClose}>
+              <X className="h-4 w-4" />
+            </Button>
+          </div>
+        </div>
+
+        <div className="space-y-4 px-5 py-4">
+          {/* 标签 */}
+          <div className="flex items-center gap-1.5">
+            <Badge variant="outline" className="text-[10px]">{factor.category}</Badge>
+            <Badge variant="outline" className="text-[10px] text-gray-400">{factor.origin}</Badge>
+            {factor.source === 'public' && <Badge variant="outline" className="text-[10px] border-blue-300 text-blue-600">网络</Badge>}
+            {factor.source === 'self' && <Badge variant="outline" className="text-[10px] border-purple-300 text-purple-600">自研</Badge>}
+          </div>
+
+          {/* 定义 */}
+          <section>
+            <h4 className="text-xs font-semibold text-gray-700 mb-1">因子定义与计算逻辑</h4>
+            <p className="text-xs text-gray-600 leading-relaxed">{factor.definition || '暂无定义'}</p>
+          </section>
+
+          {/* 适用环境 */}
+          {factor.applicable && (
+            <section>
+              <h4 className="text-xs font-semibold text-gray-700 mb-1">适用市场环境与范围</h4>
+              <p className="text-xs text-gray-600">{factor.applicable}</p>
+            </section>
+          )}
+
+          {/* 注意事项 */}
+          {factor.notes && (
+            <section>
+              <h4 className="text-xs font-semibold text-gray-700 mb-1">使用规范与注意事项</h4>
+              <p className="text-xs text-gray-600">{factor.notes}</p>
+            </section>
+          )}
+
+          {/* 实测数据 */}
+          {evalData && (
+            <section className="rounded-lg bg-gray-50 p-3">
+              <h4 className="text-xs font-semibold text-gray-700 mb-2">本系统实测</h4>
+              <div className="grid grid-cols-3 gap-2 text-xs">
+                <div><span className="text-gray-400">IC20</span><br /><span className="font-mono font-semibold">{evalData.ic20?.toFixed(4) ?? '–'}</span></div>
+                <div><span className="text-gray-400">IR</span><br /><span className="font-mono font-semibold">{evalData.icir20?.toFixed(2) ?? '–'}</span></div>
+                <div><span className="text-gray-400">胜率</span><br /><span className="font-mono font-semibold">{evalData.posRatio ? (evalData.posRatio * 100).toFixed(0) + '%' : '–'}</span></div>
+                <div><span className="text-gray-400">多空利差</span><br /><span className="font-mono font-semibold">{evalData.spread20 ? (evalData.spread20 * 100).toFixed(1) + '%' : '–'}</span></div>
+                <div><span className="text-gray-400">方向</span><br /><span className="font-mono">{evalData.dir ?? '–'}</span></div>
+                <div><span className="text-gray-400">t值</span><br /><span className="font-mono">{evalData.tstat?.toFixed(1) ?? '–'}</span></div>
+              </div>
+            </section>
+          )}
+
+          {/* 历史表现 */}
+          {factor.performance && (
+            <section>
+              <h4 className="text-xs font-semibold text-gray-700 mb-1">历史有效性表现</h4>
+              <p className="text-xs text-gray-600">{factor.performance}</p>
+            </section>
+          )}
+
+          {/* 筛选规则 */}
+          {factor.rule && (
+            <section className="rounded-lg border border-gray-100 p-3">
+              <h4 className="text-xs font-semibold text-gray-700 mb-1">筛选规则</h4>
+              <p className="text-xs text-gray-500 font-mono">
+                {factor.rule.field} {factor.rule.dir === 'asc' ? '升序' : '降序'} 前 {factor.rule.topPct * 100}%
+              </p>
+            </section>
+          )}
+        </div>
+      </div>
+    </>
+  )
+}
+
+// ═══════════════════════════════════════════════════════════════
+// 已选因子托盘
+// ═══════════════════════════════════════════════════════════════
+function SelectedTray({
+  selected,
+  onRemove,
+}: {
+  selected: Factor[]
+  onRemove: (id: string) => void
+}) {
+  if (selected.length === 0) return null
+  return (
+    <div className="flex flex-wrap items-center gap-1.5 rounded-lg border border-amber-200 bg-amber-50/50 px-3 py-2">
+      <span className="text-[11px] font-medium text-amber-700 mr-1">已选 {selected.length}</span>
+      {selected.map((f) => (
+        <Badge
+          key={f.id}
+          variant="outline"
+          className="flex items-center gap-1 cursor-pointer border-amber-300 bg-white text-amber-700 text-[10px] px-2 py-0.5 hover:bg-amber-100"
+        >
+          {f.name}
+          <X className="h-2.5 w-2.5 hover:text-red-500" onClick={(e) => { e.stopPropagation(); onRemove(f.id) }} />
+        </Badge>
+      ))}
+    </div>
+  )
+}
+
+// ═══════════════════════════════════════════════════════════════
+// 主页面
+// ═══════════════════════════════════════════════════════════════
 export default function FactorsPage() {
-  const [, setVersion] = useState(0)
-  const [category, setCategory] = useState<string>('全部')
-
-  useEffect(() => subscribeDB(() => setVersion((v) => v + 1)), [])
-
-  // 每周自研实测数据（factor-research.json，加载失败为 null，不阻塞页面）
-  const { data: factorResearch, loading: researchLoading } = useAsync(loadFactorResearch)
+  const [pool, setPool] = useState<string[]>(() => getDB().factorPool)
+  const [search, setSearch] = useState('')
+  const [sortBy, setSortBy] = useState<'name' | 'ic'>('ic')
+  const [viewMode, setViewMode] = useState<'cards' | 'table'>('cards')
+  const [detailFactor, setDetailFactor] = useState<Factor | null>(null)
 
   const db = getDB()
-  const pool = db.factorPool
-  // db.factors 为原地变更（push/splice 不改引用），不能作为 useMemo 依赖；
-  // 数组很小（~30 条），每次渲染直接过滤，保证合并联网收集因子后立即可见
-  const publicFactors = db.factors.filter((f) => f.source === 'public')
-  const selfFactors = db.factors.filter((f) => f.source === 'self')
+  const factors = useMemo(() => {
+    const pub = (db.factors ?? []).filter((f) => f.source === 'public')
+    const self = (db.factors ?? []).filter((f) => f.source === 'self')
+    return [...pub, ...self]
+  }, [db.factors])
 
-  const categories = ['全部', ...Array.from(new Set(db.factors.map((f) => f.category)))]
+  const researchState = useAsync(loadFactorResearch)
 
-  const applyFilter = (list: Factor[]) =>
-    category === '全部' ? list : list.filter((f) => f.category === category)
-
-  const togglePool = (id: string) => {
-    updateDB((db) => {
-      const i = db.factorPool.indexOf(id)
-      if (i >= 0) db.factorPool.splice(i, 1)
-      else db.factorPool.push(id)
-    })
-  }
-
-  const renderGrid = (list: Factor[]) => {
-    const filtered = applyFilter(list)
-    if (filtered.length === 0) {
-      return (
-        <div className="rounded-xl border border-dashed border-gray-200 bg-white/40 p-10 text-center text-sm text-gray-400">
-          该分类下暂无因子，换个分类看看。
-        </div>
+  // 搜索 + 排序
+  const filtered = useMemo(() => {
+    let list = factors
+    if (search) {
+      const q = search.toLowerCase()
+      list = list.filter((f) =>
+        f.name.toLowerCase().includes(q) ||
+        f.id.toLowerCase().includes(q) ||
+        (f.origin ?? '').toLowerCase().includes(q),
       )
     }
-    return (
-      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-        {filtered.map((f) => (
-          <FactorCard
-            key={f.id}
-            factor={f}
-            inPool={pool.includes(f.id)}
-            research={f.rule && factorResearch ? factorResearch.results[f.rule.field] : undefined}
-            onToggle={togglePool}
-          />
-        ))}
-      </div>
-    )
+    return list
+  }, [factors, search])
+
+  const selectedFactors = useMemo(() => filtered.filter((f) => pool.includes(f.id)), [filtered, pool])
+
+  const toggle = (id: string) => {
+    updateDB((d) => {
+      const idx = d.factorPool.indexOf(id)
+      if (idx >= 0) d.factorPool.splice(idx, 1)
+      else d.factorPool.push(id)
+    })
+    setPool(getDB().factorPool)
   }
 
   return (
-    <div className="flex flex-col gap-6 min-w-0">
-      {/* 页头 */}
-      <div className="flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <h1 className="flex items-center gap-2 text-2xl font-bold text-gray-900">
-            <FlaskConical className="size-6 text-amber-500" />
-            因子实验室
-          </h1>
-          <p className="mt-1 text-sm text-gray-500">
-            浏览网络热门因子与自研因子，将可用因子加入选择池，供组合工作台调用。
-          </p>
-          {factorResearch && (
-            <p className="mt-1 max-w-2xl truncate text-xs text-gray-400" title={factorResearch.method}>
-              实测数据更新于 {factorResearch.updatedAt.slice(0, 10)} · {factorResearch.window.evalDates}{' '}
-              个评估日 / {factorResearch.window.stocks} 只股票 · 方法：{factorResearch.method}
-            </p>
-          )}
-        </div>
-        <div className="flex items-center gap-2 rounded-xl border border-gray-200 bg-white px-4 py-2">
-          <Layers className="size-4 text-amber-500" />
-          <span className="text-sm text-gray-700">
-            已选{' '}
-            <span className="font-mono tabular-nums text-base font-semibold text-amber-500">
-              {pool.length}
-            </span>{' '}
-            个因子
-          </span>
-        </div>
-      </div>
+    <div className="flex flex-col gap-4 min-w-0">
+      {/* 已选托盘 */}
+      <SelectedTray
+        selected={selectedFactors}
+        onRemove={(id) => toggle(id)}
+      />
 
-      {/* 分类筛选 */}
+      {/* 工具栏 */}
       <div className="flex flex-wrap items-center gap-2">
-        <span className="text-xs text-gray-400">分类筛选</span>
-        {categories.map((c) => (
-          <button
-            key={c}
-            onClick={() => setCategory(c)}
-            className={cn(
-              'rounded-full border px-3 py-1 text-xs transition-colors',
-              category === c
-                ? 'border-amber-400 bg-amber-100 text-amber-500'
-                : 'border-gray-200 bg-white text-gray-500 hover:border-gray-400 hover:text-gray-800',
-            )}
+        <div className="relative flex-1 max-w-sm">
+          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-gray-400" />
+          <Input
+            className="pl-8 h-8 text-xs"
+            placeholder="搜索因子名、ID、来源…"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
+        </div>
+        <div className="flex items-center gap-1.5 ml-auto">
+          <Button
+            variant={viewMode === 'cards' ? 'outline' : 'ghost'}
+            size="sm"
+            className="h-7 text-xs gap-1"
+            onClick={() => setViewMode('cards')}
           >
-            {c}
-          </button>
-        ))}
+            <LayoutGrid className="h-3 w-3" />卡片
+          </Button>
+          <Button
+            variant={viewMode === 'table' ? 'outline' : 'ghost'}
+            size="sm"
+            className="h-7 text-xs gap-1"
+            onClick={() => setViewMode('table')}
+          >
+            <List className="h-3 w-3" />表格
+          </Button>
+        </div>
       </div>
 
-      <Tabs defaultValue="public">
-        <TabsList className="border border-gray-200 bg-white">
-          <TabsTrigger value="public">
-            网络热门因子库
-            <span className="ml-1.5 font-mono tabular-nums text-xs text-gray-400">
-              {publicFactors.length}
-            </span>
-          </TabsTrigger>
-          <TabsTrigger value="self">
-            自研因子
-            <span className="ml-1.5 font-mono tabular-nums text-xs text-gray-400">
-              {selfFactors.length}
-            </span>
-          </TabsTrigger>
-        </TabsList>
+      {/* 因子列表 */}
+      {viewMode === 'cards' ? (
+        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+          {filtered.map((f) => (
+            <FactorCard
+              key={f.id}
+              factor={f}
+              isSelected={pool.includes(f.id)}
+              onToggle={() => toggle(f.id)}
+              onDetail={() => setDetailFactor(f)}
+            />
+          ))}
+        </div>
+      ) : (
+        <div className="overflow-x-auto max-w-full rounded-lg border border-gray-200">
+          <table className="w-full text-xs">
+            <thead className="bg-gray-50">
+              <tr className="text-left text-gray-500">
+                <th className="px-3 py-2 font-medium">因子</th>
+                <th className="px-3 py-2 font-medium">类别</th>
+                <th className="px-3 py-2 font-medium">来源</th>
+                <th className="px-3 py-2 text-right font-medium">IC20</th>
+                <th className="px-3 py-2 text-right font-medium">IR</th>
+                <th className="px-3 py-2 text-center font-medium">操作</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filtered.map((f) => {
+                const evalData = researchState.data?.results?.[f.id]
+                return (
+                  <tr
+                    key={f.id}
+                    className={cn(
+                      'border-t border-gray-50 hover:bg-amber-50/20 cursor-pointer',
+                      pool.includes(f.id) && 'bg-amber-50/30',
+                    )}
+                    onClick={() => setDetailFactor(f)}
+                  >
+                    <td className="px-3 py-1.5">
+                      <span className="font-medium text-gray-800">{f.name}</span>
+                      <span className="ml-1.5 text-[10px] text-gray-400">{f.id.slice(0,12)}</span>
+                    </td>
+                    <td className="px-3 py-1.5"><Badge variant="outline" className="text-[10px]">{f.category}</Badge></td>
+                    <td className="px-3 py-1.5 text-gray-500">{f.origin}</td>
+                    <td className="px-3 py-1.5 text-right font-mono text-gray-600">{evalData?.ic20?.toFixed(4) ?? '–'}</td>
+                    <td className="px-3 py-1.5 text-right font-mono text-gray-600">{evalData?.icir20?.toFixed(2) ?? '–'}</td>
+                    <td className="px-3 py-1.5 text-center">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className={cn('h-6 text-[10px]', pool.includes(f.id) ? 'text-amber-600' : 'text-gray-400')}
+                        onClick={(e) => { e.stopPropagation(); toggle(f.id) }}
+                      >
+                        {pool.includes(f.id) ? '已选' : '选择'}
+                      </Button>
+                    </td>
+                  </tr>
+                )
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
 
-        <TabsContent value="public" className="mt-4">
-          <p className="mb-3 text-xs text-gray-400">
-            来自 WorldQuant Alpha101、Fama-French、国泰君安 191、聚宽 / 米筐社区等公开来源的经典因子。
-          </p>
-          {renderGrid(publicFactors)}
-        </TabsContent>
+      {/* 空状态 */}
+      {filtered.length === 0 && (
+        <div className="py-12 text-center text-gray-400 text-xs">未找到匹配的因子</div>
+      )}
 
-        <TabsContent value="self" className="mt-4">
-          <p className="mb-3 text-xs text-gray-400">
-            本系统自研因子，按研发阶段标记：挖掘中 / 测试中 / 已验证 / 已弃用（已弃用因子置灰显示，不建议入池）。
-          </p>
-          {renderGrid(selfFactors)}
-        </TabsContent>
-      </Tabs>
+      {/* 详情抽屉 */}
+      <DetailDrawer
+        factor={detailFactor}
+        isSelected={detailFactor ? pool.includes(detailFactor.id) : false}
+        research={researchState.data ?? null}
+        selectedFactors={selectedFactors}
+        onClose={() => setDetailFactor(null)}
+        onToggle={() => detailFactor && toggle(detailFactor.id)}
+      />
 
-      {/* 因子实测评估（每周自研实测产出） */}
-      {!researchLoading &&
-        (factorResearch ? (
-          <ResearchEvalSection research={factorResearch} />
-        ) : (
-          <section className="rounded-xl border border-dashed border-gray-200 bg-white/40 p-10 text-center text-sm text-gray-400">
-            等待首次周度实测
-          </section>
-        ))}
+      {/* 底部面板 */}
       <LazyLoader><FactorExpressionEditor /></LazyLoader>
-
       <LazyLoader><DiscoveredFactors /></LazyLoader>
-
       <LazyLoader><FactorDiagnostics /></LazyLoader>
     </div>
   )
