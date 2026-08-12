@@ -556,7 +556,7 @@ export default function FactorsPage() {
   }
 
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex flex-col gap-6 min-w-0">
       {/* 页头 */}
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
