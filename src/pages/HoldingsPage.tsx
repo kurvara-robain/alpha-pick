@@ -26,6 +26,8 @@ import type { UniverseStock } from '@/lib/marketData'
 import { useAsync } from '@/lib/useAsync'
 import { fmtNum, fmtPct, pctColor } from '@/lib/format'
 import type { ChanAnalysis, DiagnosisAdvice, Holding } from '@/lib/types'
+import { legacySourceLabel, unifiedHeldPositions } from '@/lib/portfolioLegacy'
+import type { UnifiedHeldPosition } from '@/lib/portfolioLegacy'
 import { cn } from '@/lib/utils'
 import CSVImport from '@/components/CSVImport'
 import BrokerPanel from '@/components/BrokerPanel'
@@ -47,7 +49,7 @@ const chanTrend: Record<ChanAnalysis['trend'], { label: string; cls: string }> =
   consolidation: { label: '中枢震荡', cls: 'border-violet-500/40 bg-violet-500/10 text-violet-300' },
 }
 
-function HoldingCard({ h, stock }: { h: Holding; stock: UniverseStock | null }) {
+function HoldingCard({ h, stock, sourceLabel }: { h: Holding; stock: UniverseStock | null; sourceLabel?: string }) {
   const [loading, setLoading] = useState(false)
   const [diagError, setDiagError] = useState('')
   const [chanLoading, setChanLoading] = useState(false)
@@ -105,6 +107,11 @@ function HoldingCard({ h, stock }: { h: Holding; stock: UniverseStock | null }) 
           <div className="flex items-center gap-2">
             <span className="text-base font-semibold text-gray-900">{h.name}</span>
             <span className="font-mono text-xs text-gray-400">{h.code}</span>
+            {sourceLabel && (
+              <Badge variant="outline" className="border-slate-300 bg-slate-50 text-[10px] text-slate-500">
+                来自:{sourceLabel}
+              </Badge>
+            )}
             {h.diagnosis && (
               <Badge variant="outline" className={adviceStyle[h.diagnosis.advice]}>
                 {h.diagnosis.advice}
@@ -308,6 +315,43 @@ function HoldingCard({ h, stock }: { h: Holding; stock: UniverseStock | null }) 
 const MAX_OPTIONS = 30 // 下拉候选最多渲染条数（全 A 5000+ 只，避免 DOM 爆炸）
 
 /**
+ * 统一持仓视图中非 DB.holdings 来源（legacy：positionStore / simTrade）的紧凑展示行。
+ * 只读展示，标注来源；不提供 DB 持仓的诊断/删除操作（那些归属各自 legacy 引擎）。
+ */
+function LegacyHeldRow({ u }: { u: UnifiedHeldPosition }) {
+  return (
+    <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-gray-200 bg-white p-4 md:p-5">
+      <div>
+        <div className="flex items-center gap-2">
+          <span className="text-base font-semibold text-gray-900">{u.name}</span>
+          <span className="font-mono text-xs text-gray-400">{u.code}</span>
+          <Badge variant="outline" className="border-slate-300 bg-slate-50 text-[10px] text-slate-500">
+            来自:{legacySourceLabel(u.source)}
+          </Badge>
+        </div>
+        <div className="mt-1 text-xs text-gray-400">
+          添加于 {u.addedAt ? new Date(u.addedAt).toLocaleDateString('zh-CN') : '—'}
+        </div>
+      </div>
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+        <div className="rounded-lg border border-gray-200/60 bg-gray-50 px-3 py-2">
+          <div className="text-[11px] text-gray-400">成本价</div>
+          <div className="mt-0.5 font-mono text-sm tabular-nums text-gray-700">¥ {fmtNum(u.avgCost)}</div>
+        </div>
+        <div className="rounded-lg border border-gray-200/60 bg-gray-50 px-3 py-2">
+          <div className="text-[11px] text-gray-400">持仓股数</div>
+          <div className="mt-0.5 font-mono text-sm tabular-nums text-gray-700">{fmtNum(u.shares, 0)}</div>
+        </div>
+        <div className="rounded-lg border border-gray-200/60 bg-gray-50 px-3 py-2">
+          <div className="text-[11px] text-gray-400">来源</div>
+          <div className="mt-0.5 text-sm text-gray-700">{legacySourceLabel(u.source)}</div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+/**
  * 可搜索股票组合框：名称/代码模糊搜索（code 支持只输数字段），
  * 键盘 ↓/↑ 移动、Enter 选中、Esc 收起，失焦延迟收起以允许鼠标点击。
  */
@@ -447,6 +491,8 @@ function StockCombobox({
 }
 
 export default function HoldingsPage() {  const db = useDB()
+  // 统一持仓视图：聚合 legacy 三类来源（db.holdings / positionStore / simTrade），只读展示并标注来源
+  const unified = useMemo(() => unifiedHeldPositions(), [db])
   const [code, setCode] = useState('')
   const [cost, setCost] = useState('')
   const [shares, setShares] = useState('')
@@ -576,13 +622,13 @@ export default function HoldingsPage() {  const db = useDB()
             持仓数量
           </div>
           <div className="mt-1 font-mono text-xl font-semibold tabular-nums text-gray-900">
-            {db.holdings.length} <span className="text-sm font-normal text-gray-400">只</span>
+            {unified.length} <span className="text-sm font-normal text-gray-400">只</span>
           </div>
         </div>
         <div className="rounded-xl border border-gray-200 bg-white p-4">
           <div className="flex items-center gap-2 text-xs text-gray-400">
             <Wallet className="h-3.5 w-3.5" />
-            总市值
+            总市值（持仓台账）
           </div>
           <div className="mt-1 font-mono text-xl font-semibold tabular-nums text-gray-900">
             ¥ {fmtNum(totals.mkt)}
@@ -596,8 +642,8 @@ export default function HoldingsPage() {  const db = useDB()
         </div>
       </div>
 
-      {/* 持仓列表 */}
-      {db.holdings.length === 0 ? (
+      {/* 统一持仓列表（含 legacy 来源，只读展示并标注） */}
+      {unified.length === 0 ? (
         <div className="rounded-xl border border-dashed border-gray-300 bg-white/40 p-10 text-center">
           <Briefcase className="mx-auto h-8 w-8 text-gray-300" />
           <p className="mt-3 text-sm text-gray-500">还没有持仓记录</p>
@@ -623,9 +669,20 @@ export default function HoldingsPage() {  const db = useDB()
         </div>
       ) : (
         <div className="space-y-3">
-          {db.holdings.map((h) => (
-            <HoldingCard key={h.id} h={h} stock={stockMap.get(h.code) ?? null} />
-          ))}
+          <p className="text-[11px] text-gray-400">
+            统一持仓视图 · 共 {unified.length} 只（含 legacy 来源，仅展示不修改原数据）
+          </p>
+          {unified.map((u) => {
+            if (u.source === 'db.holdings') {
+              const h = db.holdings.find((x) => `db:${x.id}` === u.id)
+              return h ? (
+                <HoldingCard key={u.id} h={h} stock={stockMap.get(h.code) ?? null} sourceLabel="持仓台账" />
+              ) : (
+                <LegacyHeldRow key={u.id} u={u} />
+              )
+            }
+            return <LegacyHeldRow key={u.id} u={u} />
+          })}
         </div>
       )}
 

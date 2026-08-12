@@ -230,7 +230,7 @@ export default function MyStocksPage() {
                   <tr className={cn('border-b border-gray-50 hover:bg-amber-50/20 cursor-pointer', expandedCode === s.code && 'bg-amber-50/30')}
                     onClick={() => toggleExpand(s.code)}>
                     <td className="py-1 px-2">{expandedCode === s.code ? <ChevronUp size={12} className="text-amber-500"/> : <ChevronDown size={12} className="text-gray-400"/>}</td>
-                    <td className="py-1 px-2 font-mono text-gray-700">{s.code}</td><td className="py-1 px-2 text-gray-600">{s.name}</td>
+                    <td className="py-1 px-2 font-mono text-gray-700">{s.code}</td><td className="py-1 px-2 text-gray-600">{s.name}<span className="ml-1.5 rounded border border-gray-200 bg-gray-50 px-1 py-px text-[9px] text-gray-400">来自:自选</span></td>
                     <td className="py-1 px-2 text-right font-mono">{s.currentPrice ? fmtNum(s.currentPrice) : '—'}</td>
                     <td className={cn('py-1 px-2 text-right font-mono', pctColor(s.dailyChange ?? 0))}>{s.dailyChange != null ? fmtPct(s.dailyChange) : '—'}</td>
                     <td className={cn('py-1 px-2 text-right font-mono font-semibold', pctColor(s.totalReturn ?? 0))}>{s.totalReturn != null ? fmtPct(s.totalReturn) : '—'}</td>
@@ -271,7 +271,7 @@ export default function MyStocksPage() {
                 </tr></thead>
                 <tbody>
                   {psnaps.map(p => (<tr key={p.code} className="border-b border-gray-50 hover:bg-blue-50/20">
-                    <td className="py-1 px-2 font-mono text-gray-700">{p.code}</td><td className="py-1 px-2 text-gray-600">{p.name}</td>
+                    <td className="py-1 px-2 font-mono text-gray-700">{p.code}</td><td className="py-1 px-2 text-gray-600">{p.name}<span className="ml-1.5 rounded border border-gray-200 bg-gray-50 px-1 py-px text-[9px] text-gray-400">来自:持仓(旧)</span></td>
                     <td className="py-1 px-2 text-right font-mono">{p.currentPrice > 0 ? fmtNum(p.currentPrice) : '—'}</td>
                     <td className="py-1 px-2 text-right font-mono text-gray-500">{fmtNum(p.entryPrice)}</td>
                     <td className="py-1 px-2 text-right font-mono">{p.quantity}股</td>
