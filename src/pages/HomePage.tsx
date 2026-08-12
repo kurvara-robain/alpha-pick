@@ -12,11 +12,32 @@ import type { UniverseStock } from '@/lib/marketData'
 import { useAsync } from '@/lib/useAsync'
 import { fmtNum, fmtPct, pctColor } from '@/lib/format'
 import { getDB } from '@/lib/store'
+import { createDraftRun } from '@/lib/experimentRun'
 import { buildDataVersion } from '@/lib/versionMetadata'
 import { getPitContext, getActiveSnapshot } from '@/lib/dataSnapshotStore'
 import Sparkline from '@/components/Sparkline'
 import { getAlerts, checkSignalChanges, requestNotificationPermission, markAlertsRead } from '@/lib/alerts'
 import { useEffect } from 'react'
+
+/**
+ * 搜索意图 → 目标路由（纯函数，供测试直接验证）。
+ * V2：选股/策略/因子/回测类查询进入 ExperimentRun 主链接线
+ * （HomePage 会先 createDraftRun 再携带 runId 跳转）；持仓/板块等
+ * 非筛选类查询走原路由，不创建 Run。
+ */
+export function searchRoute(query: string): string {
+  const lower = query.toLowerCase()
+  if (lower.includes('持仓')) return '/holdings'
+  if (lower.includes('因子')) return '/factors'
+  if (lower.includes('策略') || lower.includes('回测')) return '/strategies'
+  if (lower.includes('板块')) return '/market'
+  return '/workbench'
+}
+
+/** 研究基准日期（asOfDate）：本地当日（数据快照合同由 PIT 层负责） */
+export function todayAsOfDate(): string {
+  return new Date().toISOString().slice(0, 10)
+}
 
 export default function HomePage() {
   const indicesState = useAsync(loadIndices)
@@ -47,12 +68,15 @@ export default function HomePage() {
 
   const handleSearch = () => {
     if (!query.trim()) return
-    const lower = query.toLowerCase()
-    if (lower.includes('持仓')) navigate('/holdings')
-    else if (lower.includes('策略') || lower.includes('回测')) navigate('/strategies')
-    else if (lower.includes('因子')) navigate('/factors')
-    else if (lower.includes('板块')) navigate('/market')
-    else navigate('/research')
+    const route = searchRoute(query)
+    // 持仓/板块等非筛选类查询：原路由直达，不创建 Run（legacy 行为）
+    if (route === '/holdings' || route === '/market') {
+      navigate(route)
+      return
+    }
+    // V2 主链接线：NL → createDraftRun（搜索词完整落入 originalQuery）→ 携带 runId 跳转
+    const run = createDraftRun({ raw: query }, todayAsOfDate())
+    navigate(`${route}?runId=${run.id}`)
   }
 
   return (
