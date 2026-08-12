@@ -1,76 +1,127 @@
-import { Link, NavLink, Outlet } from 'react-router'
-import {
-  BarChart3,
-  BrainCircuit,
-  Clock,
-  FlaskConical,
-  Gauge,
-  LayoutList,
-  LineChart,
-  Newspaper,
-  SlidersHorizontal,
-  Wallet,
-  FileSearch,
-  TrendingUp,
-  Target,
-  Star,
-} from 'lucide-react'
+import { useState } from 'react'
+import { Link, NavLink, Outlet, useNavigate } from 'react-router'
+import { BrainCircuit } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Toaster } from '@/components/ui/sonner'
 
-export const NAV_ITEMS = [
-  { to: '/market', label: '市场全览', icon: Gauge },
-  { to: '/strategies', label: '策略池', icon: LayoutList },
-  { to: '/factors', label: '因子实验室', icon: FlaskConical },
-  { to: '/workbench', label: '组合工作台', icon: SlidersHorizontal },
-  { to: '/watchlist', label: '备选清单', icon: LineChart },
-  { to: '/backtest', label: '回测分析', icon: BarChart3 },
-  { to: '/holdings', label: '持仓诊股', icon: Wallet },
-  { to: '/reports', label: '研究报告', icon: Newspaper },
-  { to: '/research', label: '个股投研', icon: FileSearch },
-  { to: '/simtrade', label: '模拟交易', icon: TrendingUp },
-  { to: '/pit', label: '时间旅行', icon: Clock },
-  { to: '/zettaranc', label: '知行体系', icon: Target },
-  { to: '/my-stocks', label: '自选与持仓', icon: Star },
-] as const
+interface NavGroup {
+  label: string
+  items: { to: string; label: string }[]
+}
+
+const NAV_GROUPS: NavGroup[] = [
+  {
+    label: '市场',
+    items: [
+      { to: '/market', label: '市场全览' },
+      { to: '/reports', label: '研究报告' },
+    ],
+  },
+  {
+    label: '选股',
+    items: [
+      { to: '/strategies', label: '策略池' },
+      { to: '/factors', label: '因子实验室' },
+      { to: '/workbench', label: '组合工作台' },
+      { to: '/watchlist', label: '备选清单' },
+      { to: '/zettaranc', label: '知行体系' },
+    ],
+  },
+  {
+    label: '研究',
+    items: [
+      { to: '/research', label: '个股投研' },
+      { to: '/backtest', label: '回测分析' },
+      { to: '/pit', label: '时间旅行' },
+    ],
+  },
+  {
+    label: '交易',
+    items: [
+      { to: '/simtrade', label: '模拟交易' },
+      { to: '/holdings', label: '持仓诊股' },
+    ],
+  },
+  {
+    label: '我的',
+    items: [
+      { to: '/my-stocks', label: '自选与持仓' },
+    ],
+  },
+]
 
 export default function Layout() {
+  const [openGroup, setOpenGroup] = useState<string | null>(null)
+  const navigate = useNavigate()
+
   return (
     <div className="min-h-screen bg-gray-50 font-sans text-gray-900 antialiased">
       {/* Bloomberg-style top navigation bar */}
-      <header className="sticky top-0 z-40 border-b border-gray-700 bg-[#1A1A2E]">
-        <div className="mx-auto flex h-11 max-w-7xl items-center gap-1 px-4">
+      <header
+        className="sticky top-0 z-40 border-b border-gray-700 bg-[#1A1A2E]"
+        onMouseLeave={() => setOpenGroup(null)}
+      >
+        <div className="mx-auto flex h-11 max-w-7xl items-center gap-0 px-4">
           {/* Brand */}
-          <Link to="/" className="mr-4 flex items-center gap-2 hover:opacity-80 transition-opacity">
+          <Link to="/" className="mr-3 flex shrink-0 items-center gap-2 hover:opacity-80 transition-opacity">
             <span className="flex h-7 w-7 items-center justify-center rounded bg-amber-500">
               <BrainCircuit size={14} className="text-[#1A1A2E]" />
             </span>
             <span className="text-sm font-bold tracking-wide text-white">
-              AlphaMind<span className="ml-1 text-amber-500">量化选股</span>
+              AlphaMind<span className="ml-1 text-amber-500">量化投研</span>
             </span>
           </Link>
 
-          {/* Navigation links */}
-          <nav className="flex h-full items-center gap-0.5">
-            {NAV_ITEMS.map((item) => (
-              <NavLink
-                key={item.to}
-                to={item.to}
-                className={({ isActive }) =>
-                  cn(
-                    'flex items-center gap-1.5 rounded-t-sm px-3 py-2 text-xs font-medium transition-colors',
-                    isActive
+          {/* Navigation groups */}
+          <nav className="flex h-full items-center">
+            {NAV_GROUPS.map((group) => (
+              <div
+                key={group.label}
+                className="relative h-full"
+                onMouseEnter={() => setOpenGroup(group.label)}
+              >
+                <button
+                  className={cn(
+                    'flex h-full items-center gap-1 rounded-t-sm px-3 text-xs font-medium transition-colors',
+                    openGroup === group.label
                       ? 'border-b-2 border-amber-500 bg-white/10 text-amber-400'
                       : 'text-gray-400 hover:bg-white/5 hover:text-gray-200',
-                  )
-                }
-              >
-                {item.label}
-              </NavLink>
+                  )}
+                  onClick={() => {
+                    // Click opens dropdown or navigates to first item
+                    setOpenGroup(openGroup === group.label ? null : group.label)
+                    navigate(group.items[0].to)
+                  }}
+                >
+                  {group.label}
+                  <svg className="h-3 w-3 opacity-50" viewBox="0 0 10 6"><path d="M0 0l5 6 5-6z" fill="currentColor" /></svg>
+                </button>
+                {openGroup === group.label && (
+                  <div className="absolute left-0 top-full min-w-[140px] rounded-b border border-t-0 border-gray-600 bg-[#1A1A2E] py-1 shadow-xl">
+                    {group.items.map((item) => (
+                      <NavLink
+                        key={item.to}
+                        to={item.to}
+                        onClick={() => setOpenGroup(null)}
+                        className={({ isActive }) =>
+                          cn(
+                            'block px-3 py-1.5 text-xs transition-colors',
+                            isActive
+                              ? 'bg-amber-500/15 text-amber-400 font-medium'
+                              : 'text-gray-400 hover:bg-white/5 hover:text-gray-200',
+                          )
+                        }
+                      >
+                        {item.label}
+                      </NavLink>
+                    ))}
+                  </div>
+                )}
+              </div>
             ))}
           </nav>
 
-          {/* Right side placeholder */}
+          {/* Right side */}
           <div className="ml-auto flex items-center gap-3">
             <span className="text-[10px] text-gray-500">
               {new Date().toLocaleDateString('zh-CN', { weekday: 'short', month: 'short', day: 'numeric' })}
