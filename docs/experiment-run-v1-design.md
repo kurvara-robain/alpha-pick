@@ -35,10 +35,13 @@
 
 | 类型 | 原因 |
 |------|------|
-| `ExperimentRun` | 主键，串联全流程 |
+| `ExperimentRun` | 主键，串联全流程，研究配置与结果的**唯一事实来源** |
 | `StrategySnapshot` | 不可变快照，防止策略被修改后历史 Run 数据变化 |
 | `FactorSnapshot` | 同上 |
-| `CandidateSnapshotRef` | 引用 watchlist ID + 筛选条件快照 |
+| `CandidateSnapshot` | **独立持久化对象**（非 WatchList 引用），候选结果不可变 |
+| `BacktestSpec` | 回测开始前冻结的完整回测配置 |
+| `BacktestRunRecord` | 回测结果与 runId、configHash、attempt 历史的关联 |
+| `ResearchQuestion` | 用户原始问题（draft 阶段即保存） |
 | `ExperimentRunQuery` | 轻量级 DTO，仅用于 Run 列表展示 |
 
 ### 1.4 为什么 ExperimentRun 是最小改造主键
@@ -49,6 +52,8 @@
 2. 在每个步骤完成后更新状态
 3. 让后续页面能读取前序页面的配置
 4. 在 localStorage 中持久化，刷新不丢
+
+**关键定位修正（闸门1 结论）**：ExperimentRun 不是"附加在旧页面上的引用信封"，而是**研究配置与结果的唯一事实来源**。有 runId 时，Workbench 的筛选配置与 Backtest 的回测配置**必须全部从 Run 快照读取**，不得从 `db.strategies` / `db.factorPool` 重新组装。旧页面流程仅在无 runId 时作为 legacy 兼容路径保留。
 
 ---
 
@@ -90,13 +95,81 @@ export interface CombinationLogic {
   description: string            // 人类可读描述，如 "低PE AND 动量趋势"
 }
 
-/** 候选清单引用 */
-export interface CandidateSnapshotRef {
-  watchlistId: string            // 对应 db.watchlists[].id
-  itemCount: number              // 候选股数量
-  strategySnapshotIds: string[]  // 当时使用的策略快照 ID 列表
-  factorSnapshotIds: string[]    // 当时使用的因子快照 ID 列表
-  generatedAt: string            // ISO
+/** 单只候选股（不可变） */
+export interface CandidateItem {
+  stockCode: string
+  stockName: string
+  rank: number                   // 截面排名（1=最优）
+  included: boolean              // 是否最终入选
+  strategyMatches: string[]      // 命中的策略快照 ID
+  factorScores: Record<string, number>  // 因子快照 ID → 得分
+  compositeScore: number         // 综合得分
+  exclusionReasons?: string[]    // 排除原因（未入选时）
+  inclusionReasons?: string[]    // 入选原因（入选时）
+  marketDataTimestamp: string    // 行情数据时间戳
+}
+
+/**
+ * 独立候选快照（闸门2）
+ * 持久化对象，不依赖 WatchList 存在。
+ * WatchList 只引用 CandidateSnapshot.id，不能充当 CandidateSnapshot 本身。
+ */
+export interface CandidateSnapshot {
+  id: string
+  runId: string
+  asOfDate: string
+  createdAt: string
+  universeSnapshot: {            // 股票池定义（冻结）
+    scope: string                // 如 "全A" | "沪深300" | "自定义"
+    stockCount: number
+    source: string               // 数据源描述
+  }
+  dataSnapshotId: string         // 数据批次 ID（对应 versionMetadata）
+  candidates: CandidateItem[]
+  configHash: string             // 产生该快照的可执行配置哈希（见闸门6）
+}
+
+/**
+ * 完整可执行配置快照（闸门3）
+ * 覆盖一次筛选可重放所需的所有字段。
+ * V1 不支持的字段显式写 'unsupported' 或 'none'，不得隐式省略。
+ */
+export interface ScreeningSpec {
+  universe: { scope: string; stockCount: number; source: string }
+  asOfDate: string
+  strategyConditions: StrategyCondition[][]  // 每个策略一组条件
+  combination: 'intersection' | 'union' | 'score'
+  factorDirections: Record<string, 'asc' | 'desc'>
+  factorWeights: Record<string, number>
+  normalization: 'zscore' | 'rank' | 'none'
+  missingValuePolicy: 'drop' | 'fill_mean' | 'none'
+  extremeValuePolicy: 'winsorize_99' | 'none'
+  neutralization: { byIndustry: boolean; bySize: boolean }
+  topN: number                   // 持仓数量
+  rebalance: 'weekly' | 'monthly'
+  rankTieBreaker: 'code' | 'name' | 'none'
+  dataSnapshotId: string
+  methodVersion: string          // 筛选引擎版本，如 "v1.0"
+}
+
+/**
+ * 回测规格（闸门4）
+ * 回测开始前冻结，BacktestResult 内嵌此快照。
+ */
+export interface BacktestSpec {
+  startDate: string
+  endDate: string
+  benchmark: string              // 如 "000300.SH"
+  rebalance: 'weekly' | 'monthly'
+  portfolioConstruction: 'equal_weight' | 'score_weight'
+  signalDelay: 't0' | 't1'
+  executionPrice: 'open' | 'close'
+  commission: number             // 万分之
+  stampDuty: number              // 卖出印花税 %
+  slippage: number               // 滑点 %
+  limitUpDownHandling: 'skip' | 'block'
+  suspensionHandling: 'skip' | 'hold'
+  configHash: string             // 该规格的哈希
 }
 
 /** ExperimentRun 状态 */
@@ -115,22 +188,48 @@ export interface ExperimentRun {
   originalQuery: ResearchQuestion
   status: ExperimentRunStatus
   asOfDate: string               // 研究基准日期 yyyy-MM-dd
-  universe?: string              // 股票池描述（如 "全A 5540只"）
 
-  // 快照（不可变）
+  // 不可变执行配置（闸门1：唯一事实来源）
+  screeningSpec: ScreeningSpec
   strategySnapshots: StrategySnapshot[]
   factorSnapshots: FactorSnapshot[]
-  combinationLogic?: CombinationLogic
+  combinationLogic: CombinationLogic
 
-  // 产出引用（通过 ID 关联，不内嵌完整数据）
-  candidateSnapshot?: CandidateSnapshotRef
-  backtestResultId?: string      // 对应 db.backtests[].id
+  // 产出引用（独立持久化对象，非内嵌）
+  candidateSnapshotId?: string   // 指向 DB.candidateSnapshots[].id
+  backtestRunId?: string         // 指向 DB.backtestRuns[].id
 
   // 元数据
   createdAt: string
   updatedAt: string
   failureReason?: string         // failed 状态时记录原因
   failureAt?: string             // ISO
+  attempt: number                // 失败重试次数（从 0 开始）
+  attempts: AttemptRecord[]      // 每次尝试的历史（闸门5）
+}
+
+/** 失败重试历史（闸门5） */
+export interface AttemptRecord {
+  attempt: number
+  startedAt: string
+  endedAt: string
+  status: 'screened' | 'failed' | 'completed'
+  failureReason?: string
+  candidateSnapshotId?: string
+  backtestRunId?: string
+}
+
+/** 回测运行记录（闸门4/5） */
+export interface BacktestRunRecord {
+  id: string
+  runId: string
+  spec: BacktestSpec             // 内嵌不可变规格快照
+  configHash: string
+  status: 'pending' | 'running' | 'completed' | 'failed'
+  failureReason?: string
+  createdAt: string
+  completedAt?: string
+  backtestResultId?: string      // 指向 db.backtests[].id（成功后）
 }
 ```
 
@@ -174,10 +273,69 @@ export interface DB {
   backtests: BacktestResult[]
   holdings: Holding[]
   reports: DailyReport[]
-  runs: ExperimentRun[]       // ← 新增
+  runs: ExperimentRun[]              // ← 新增
+  candidateSnapshots: CandidateSnapshot[]  // ← 新增（闸门2）
+  backtestRuns: BacktestRunRecord[]        // ← 新增（闸门4）
   seedVersion?: number
 }
 ```
+
+### 2.4 闸门5：不可变边界
+
+| 状态 | 可修改字段 | 禁止修改字段 |
+|------|-----------|-------------|
+| `draft` | `screeningSpec`（完整重写）、`strategySnapshots`、`factorSnapshots`、`combinationLogic`、`originalQuery`、`asOfDate` | `candidateSnapshotId`、`backtestRunId`、`status`（仅通过状态函数变更） |
+| `ready` | `attempts`、`updatedAt` | **所有研究配置字段**（screeningSpec / strategySnapshots / factorSnapshots / combinationLogic / originalQuery / asOfDate） |
+| `running_screen` | `updatedAt` | 同上 |
+| `screened` | `candidateSnapshotId`、`attempts`、`updatedAt` | 研究配置字段；**不允许直接重新筛选覆盖** |
+| `running_backtest` | `backtestRunId`、`updatedAt` | 研究配置字段、`candidateSnapshotId` |
+| `completed` | `updatedAt`（仅） | 一切 |
+| `failed` | `failureReason`、`failureAt`、`attempts`、`updatedAt` | 研究配置字段 |
+
+**规则**：
+- ready 以后研究配置不可修改。
+- 用户修改策略或因子时：**创建新 Run 或新 revision**，不得覆盖原 Run。V1 采用"创建新 Run"（revision 链留待 V2）。
+- screened 后不允许直接重新筛选。需要重筛 → 创建新 Run。
+- 失败重试复用原 Run：`attempt` +1，写入 `attempts[]` 历史，快照保留。
+
+### 2.5 闸门6：配置哈希规范
+
+**参与哈希的字段**（按固定顺序序列化）：
+
+```
+1. screeningSpec.universe (scope, stockCount, source)
+2. screeningSpec.asOfDate
+3. screeningSpec.strategyConditions（每个策略的 conditions 数组，condition 内按 field, op, value, window 排序）
+4. screeningSpec.combination
+5. screeningSpec.factorDirections（按键排序）
+6. screeningSpec.factorWeights（按键排序）
+7. screeningSpec.normalization
+8. screeningSpec.missingValuePolicy
+9. screeningSpec.extremeValuePolicy
+10. screeningSpec.neutralization (byIndustry, bySize)
+11. screeningSpec.topN
+12. screeningSpec.rebalance
+13. screeningSpec.rankTieBreaker
+14. screeningSpec.dataSnapshotId
+15. screeningSpec.methodVersion
+16. strategySnapshots (id, name, conditions)
+17. factorSnapshots (id, name, category, rule)
+18. combinationLogic (mode)
+```
+
+**排除字段**：
+- `createdAt`、`updatedAt`、`status`、`attempt`、`attempts[]`、`failureReason`、`failureAt`
+- `candidateSnapshotId`、`backtestRunId`（产出引用，非配置）
+
+**规范化规则**：
+- 所有对象键按字典序排序
+- 数组按元素自然序排序（conditions 内 field/op 优先序）
+- 数字统一 `toFixed(6)` 去除浮点噪声
+- 序列化 → `hash('sha256')` → 取前 16 位 hex 作为 `configHash`
+
+**用途**：
+- 检测历史配置被意外改变：`hash(current) !== run.configHash` → 标记 "配置已被外部修改"
+- 检测相同配置重复提交：相同哈希 → 可提示 "该配置已存在"
 
 ---
 
@@ -243,8 +401,21 @@ export interface DB {
 
 ### 3.4 失败后重试
 
-- **重试复用原 Run**：`retryFromFailed()` 将状态回退到 `draft`，清除 `failureReason`、`candidateSnapshot`、`backtestResultId`，保留 `strategySnapshots` 和 `factorSnapshots`。策略/因子配置不变，仅重新执行筛选和回测。
-- **创建新 Run**：用户主动从首页发起新搜索时创建新 Run，不覆盖旧 Run。
+- **重试复用原 Run**：`retryFromFailed()` 将状态回退到 `draft`，`attempt` +1，写入 `attempts[]` 历史（记录失败原因与时间），清除 `failureReason`、`candidateSnapshotId`、`backtestRunId`。**策略/因子快照不变**，仅重新执行筛选和回测。
+- **attempt 历史**：每次失败/成功都追加 `AttemptRecord`。`attempts[].failureReason` 保留可诊断信息。
+- **创建新 Run**：用户主动修改研究配置时（非失败重试），创建新 Run，不覆盖旧 Run（闸门5 规则）。
+
+### 3.5 闸门1：唯一事实来源（运行时规则）
+
+| 场景 | 数据来源 |
+|------|---------|
+| 有 runId 的 Workbench 筛选 | **Run.screeningSpec + strategySnapshots + factorSnapshots**（只读） |
+| 有 runId 的 Backtest 回测 | **Run.screeningSpec + Run.backtestSpec 派生**（只读，见闸门4） |
+| 无 runId 的旧流程（legacy） | `db.strategies` + `db.factorPool`（现有逻辑不变） |
+
+- 有 runId 时，**禁止**从 `db.strategies` / `db.factorPool` 重新组装配置（当前 `BacktestPage.tsx:212,216` 的行为只允许出现在 legacy 路径）。
+- Run 快照与当前策略池不一致时，**以 Run 快照为准**。
+- 页面不得直接修改已 ready 的 Run 配置（闸门5 强制）。
 
 ---
 
@@ -281,18 +452,32 @@ function migrateDB(db: DB): boolean {
   let changed = false
   // ... 现有 v2-v4 迁移逻辑不变 ...
 
-  // v5 迁移：添加 runs 集合
+  // v5 迁移：添加 runs / candidateSnapshots / backtestRuns 集合
   if ((db.seedVersion ?? 0) < 5) {
-    if (!Array.isArray(db.runs)) {
-      db.runs = []           // 初始化，不删除任何现有数据
-      changed = true
-    }
+    if (!Array.isArray(db.runs)) db.runs = []
+    if (!Array.isArray(db.candidateSnapshots)) db.candidateSnapshots = []
+    if (!Array.isArray(db.backtestRuns)) db.backtestRuns = []
+    changed = true
   }
 
   db.seedVersion = SEED_VERSION
   return changed
 }
 ```
+
+### 4.7 闸门7：旧数据兼容（legacy）
+
+现有 `WatchList` 和 `BacktestResult` 没有 `runId`。规则：
+
+| 规则 | 说明 |
+|------|------|
+| **不得伪造证据链** | 旧 watchlist/backtest 不创建虚假的 ExperimentRun。它们保持无 runId，标注 `legacy: true`。 |
+| **legacy 标记** | 迁移时对无 runId 的旧记录不做任何写入，仅当读取展示时由 UI 判断：`watchlist.runId === undefined` → 显示 "历史清单"；`backtestResult.runId === undefined` → 显示 "历史回测"。**不修改数据本身**。 |
+| **旧记录只读** | legacy 记录不允许被 Run 流程引用、修改或删除（保留用户手动删除能力，但 Run 流程不触碰）。 |
+| **复制为 Draft Run** | 用户可将旧 watchlist 的 `strategyIds`/`factorIds` 导入为新 Run：读取旧记录 → `createDraftRun` → `updateRunConfiguration` 填充快照。新 Run 独立存在，与旧记录无引用关系。 |
+| **删除新 Run 不影响旧记录** | Run 只读旧记录做展示，不持有引用；删除 Run 不级联删除旧 watchlist/backtest。 |
+| **迁移失败回退** | `getDB()` catch 块返回 `seed()` 全新 DB，**不覆盖 localStorage 原值**。用户删除 key 后可重建，或保留原数据等待重试。**禁止在迁移异常时清空 localStorage**。 |
+| **不静默删除** | 任何迁移路径都不删除 strategies/factors/factorPool/watchlists/backtests/holdings/reports。 |
 
 ### 4.5 迁移安全
 
@@ -330,24 +515,31 @@ function createDraftRun(query: ResearchQuestion): ExperimentRun
 
 // ── 配置 ──
 
-/** 更新 Run 的策略/因子配置（重写快照） */
+/** 更新 Run 的策略/因子配置（重写快照）— 仅 draft 状态允许 */
 function updateRunConfiguration(
   runId: string,
+  screeningSpec: ScreeningSpec,
   strategySnapshots: StrategySnapshot[],
   factorSnapshots: FactorSnapshot[],
-  logic?: CombinationLogic,
+  logic: CombinationLogic,
 ): ExperimentRun | null
-// 输入: runId + 快照数组
-// 返回: 更新后的 Run，或 null（runId 不存在）
-// 前置: run.status === 'draft'
-// 后置: run.strategySnapshots = strategySnapshots; run.factorSnapshots = factorSnapshots; run.updatedAt = now
-// 失败: 返回 null；状态不对返回 null
+// 输入: runId + 完整可执行配置
+// 返回: 更新后的 Run，或 null（runId 不存在 / 状态非 draft）
+// 前置: run.status === 'draft'（闸门5：ready 后禁止）
+// 后置: 快照重写; updatedAt = now
+// 失败: 状态非 draft → null；同时计算并保存 configHash
 
-/** 标记 Run 就绪 */
+/** 标记 Run 就绪 — 冻结配置 */
 function markRunReady(runId: string): ExperimentRun | null
 // 前置: run.status === 'draft' 且 strategySnapshots.length > 0
-// 后置: run.status = 'ready'; run.updatedAt = now
+// 后置: run.status = 'ready'; run.configHash = computeConfigHash(run)（冻结）; updatedAt = now
 // 失败: strategySnapshots 为空时返回 null
+
+/** 从 Run 快照重建可执行筛选配置（闸门1：唯一事实来源） */
+function getExecutableConfig(runId: string): ScreeningConfig | null
+// 输入: runId
+// 返回: { screeningSpec, strategySnapshots, factorSnapshots, combinationLogic } 只读视图
+// 失败: runId 不存在 → null
 
 // ── 筛选 ──
 
@@ -355,39 +547,62 @@ function startScreening(runId: string): ExperimentRun | null
 // 前置: run.status === 'ready'
 // 后置: run.status = 'running_screen'
 
-function completeScreening(runId: string, watchlistId: string, itemCount: number): ExperimentRun | null
+function completeScreening(runId: string, candidateSnapshot: CandidateSnapshot): ExperimentRun | null
 // 前置: run.status === 'running_screen'
-// 后置: run.status = 'screened'; run.candidateSnapshot = { watchlistId, itemCount, ... }
+// 后置:
+//   db.candidateSnapshots.push(candidateSnapshot)  // 独立持久化（闸门2）
+//   run.candidateSnapshotId = candidateSnapshot.id
+//   run.status = 'screened'
 
 function failScreening(runId: string, reason: string): ExperimentRun | null
 // 前置: run.status === 'running_screen'
 // 后置: run.status = 'failed'; run.failureReason = reason; run.failureAt = now
+//   attempts.push({ attempt, status: 'failed', failureReason: reason })
+
+function getCandidateSnapshot(runId: string): CandidateSnapshot | null
+// 输入: runId
+// 返回: 独立候选快照（即使 WatchList 被删除仍完整可读，闸门2）
+// 失败: 无 → null
 
 // ── 回测 ──
 
-function startBacktest(runId: string): ExperimentRun | null
+function startBacktest(runId: string, spec: BacktestSpec): ExperimentRun | null
 // 前置: run.status === 'screened'
-// 后置: run.status = 'running_backtest'
+// 后置:
+//   db.backtestRuns.push({ id, runId, spec, configHash, status: 'running', createdAt })
+//   run.backtestRunId = record.id
+//   run.status = 'running_backtest'
 
 function completeBacktest(runId: string, backtestResultId: string): ExperimentRun | null
-// 前置: run.status === 'running_backtest'
-// 后置: run.status = 'completed'; run.backtestResultId = backtestResultId
+// 前置: run.status === 'running_backtest' 且存在 backtestRunId
+// 后置: backtestRunRecord.status = 'completed'; completedAt = now
+//   backtestRunRecord.backtestResultId = backtestResultId
+//   run.status = 'completed'
+//   attempts.push({ attempt, status: 'completed' })
 
 function failBacktest(runId: string, reason: string): ExperimentRun | null
 // 前置: run.status === 'running_backtest'
-// 后置: run.status = 'failed'; run.failureReason = reason
+// 后置: backtestRunRecord.status = 'failed'; failureReason = reason
+//   run.status = 'failed'; run.failureReason = reason
+//   attempts.push({ attempt, status: 'failed', failureReason: reason })
 
 // ── 查询 ──
 
 function getRun(runId: string): ExperimentRun | null
 function listRuns(status?: ExperimentRunStatus): ExperimentRun[]
-function getActiveRun(): ExperimentRun | null  // 返回最近一个非 completed/failed 的 Run
+function getActiveRun(): ExperimentRun | null  // 最近一个非 completed/failed 的 Run
+function computeConfigHash(run: ExperimentRun): string  // 闸门6 规范实现
+function verifyConfigIntegrity(runId: string): boolean  // hash(run) === run.configHash
 
 // ── 重试 ──
 
 function retryFromFailed(runId: string): ExperimentRun | null
 // 前置: run.status === 'failed'
-// 后置: run.status = 'draft'; 清除 failureReason/candidateSnapshot/backtestResultId
+// 后置:
+//   run.attempt += 1
+//   run.status = 'draft'
+//   清除 failureReason / candidateSnapshotId / backtestRunId
+//   配置快照保留（闸门5：重试不改变配置）
 ```
 
 **所有函数**：
@@ -504,14 +719,29 @@ navigate(`/backtest?runId=${runId}`)
 const [searchParams] = useSearchParams()
 const runId = searchParams.get('runId') ?? undefined
 
-// 如果有 runId：
-// 1. 从 Run 的 strategySnapshots / factorSnapshots 反推出策略和因子 ID
-// 2. 自动填充回测配置（战略选择 + 因子选择）
-// 3. startBacktest(runId) → 运行回测 → completeBacktest(runId, backtestId)
-// 4. 回测失败 → failBacktest(runId, errorMessage)
+// 如果有 runId（闸门1：唯一事实来源）：
+// 1. const run = getRun(runId)
+// 2. const spec = deriveBacktestSpec(run.screeningSpec)  // 从 Run 冻结配置派生回测规格
+// 3. startBacktest(runId, spec) → 运行回测
+// 4. completeBacktest(runId, backtestId) / failBacktest(runId, reason)
+// 5. 展示与提交均使用 Run 快照，禁止读取 db.strategies / db.factorPool（BacktestPage.tsx:212,216 的现有行为只保留在 legacy 路径）
 
-// 没有 runId：保持现有手动选择逻辑
+// 没有 runId（legacy 兼容）：保持现有手动选择逻辑，UI 标注 "历史模式（未关联研究 Run）"
 ```
+
+### 6.6b 闸门7：legacy 页面兼容
+
+| 页面 | 无 runId 行为 | 标注 |
+|------|-------------|------|
+| HomePage | 关键词路由（不变） | — |
+| StrategiesPage | 正常创建/编辑策略（不变） | — |
+| FactorsPage | 正常选择因子（不变） | — |
+| WorkbenchPage | 生成 watchlist（不含 runId，不变） | 保存时 `watchlist.runId = undefined` |
+| WatchlistPage | 展示清单（不变） | 无 runId 清单显示 "历史清单" |
+| BacktestPage | 手动配置回测（不变） | 结果显示 "历史回测（未关联 Run）" |
+
+- 无 runId 时所有页面走现有逻辑，`legacy` 仅影响展示标注，不影响功能。
+- 用户可将 legacy watchlist 复制为新 Draft Run（闸门7 表第4行）。
 
 ### 6.7 URL 持久化总结
 
@@ -535,21 +765,22 @@ const runId = searchParams.get('runId') ?? undefined
 
 | 文件 | 目的 | 风险 |
 |------|------|------|
-| `src/lib/experimentRunStore.ts` | Run CRUD 操作 | 无，纯新增 |
-| `src/lib/__tests__/experimentRunStore.test.ts` | 单元测试 | 无 |
+| `src/lib/experimentRunStore.ts` | Run CRUD + 状态机 + configHash + 不可变边界强制 | 无，纯新增 |
+| `src/lib/__tests__/experimentRunStore.test.ts` | 单元测试（12 项基础 + 10 项闸门验收） | 无 |
 
 ### 7.2 修改文件（按依赖顺序）
 
 | 顺序 | 文件 | 修改目的 | 涉及内容 | 迁移风险 | 兼容方式 |
 |------|------|---------|---------|---------|---------|
-| 1 | `src/lib/types.ts` | 新增类型 | ExperimentRun 等 7 个类型 | 无 | 仅追加，不修改现有类型 |
-| 2 | `src/lib/store.ts` | DB 和迁移 | `DB.runs`, `SEED_VERSION=5`, `migrateDB` | 低 | 迁移仅追加空数组 |
-| 3 | `src/pages/HomePage.tsx` | 创建 Draft Run | `handleSearch` 增加 `createDraftRun` + URL query | 无 | 无 query 时不变 |
-| 4 | `src/pages/StrategiesPage.tsx` | 读取 runId | `useSearchParams` 读取 runId | 无 | 无 runId 时不变 |
-| 5 | `src/pages/FactorsPage.tsx` | 读取 runId | 同上 | 无 | 无 runId 时不变 |
-| 6 | `src/pages/WorkbenchPage.tsx` | 驱动状态机 | ready→running_screen→screened | 低 | 无 runId 时不变 |
-| 7 | `src/pages/WatchlistPage.tsx` | 下一步引导 | 显示 Run 状态 + 回测链接 | 无 | 无 runId 时不变 |
-| 8 | `src/pages/BacktestPage.tsx` | 继承配置 | 从 Run 填充策略/因子选择 | 中 | 无 runId 时手动选择 |
+| 1 | `src/lib/types.ts` | 新增类型 | ExperimentRun / CandidateSnapshot / BacktestSpec / BacktestRunRecord / ScreeningSpec / AttemptRecord 等 | 无 | 仅追加，不修改现有类型 |
+| 2 | `src/lib/store.ts` | DB 和迁移 | `DB.runs` / `DB.candidateSnapshots` / `DB.backtestRuns`, `SEED_VERSION=5`, `migrateDB` | 低 | 迁移仅追加空数组，legacy 记录不改写 |
+| 3 | `src/lib/experimentRunStore.ts` | Run CRUD + 状态机 + configHash | 全部服务接口（闸门5/6 强制） | 无 | 新文件，不触碰旧逻辑 |
+| 4 | `src/pages/HomePage.tsx` | 创建 Draft Run | `handleSearch` 增加 `createDraftRun` + URL query | 无 | 无 query 时不变 |
+| 5 | `src/pages/StrategiesPage.tsx` | 读取 runId，draft 快照 | `useSearchParams`；draft 状态写快照 | 无 | 无 runId 时不变 |
+| 6 | `src/pages/FactorsPage.tsx` | 读取 runId，draft 快照 | 同上 | 无 | 无 runId 时不变 |
+| 7 | `src/pages/WorkbenchPage.tsx` | 驱动状态机（唯一事实来源） | ready→running_screen→screened；筛选配置从 Run 读取 | 低 | 无 runId 时 legacy 逻辑不变 |
+| 8 | `src/pages/WatchlistPage.tsx` | 下一步引导 + legacy 标注 | 显示 Run 状态 + 回测链接；无 runId 显示"历史清单" | 无 | 无 runId 时不变 |
+| 9 | `src/pages/BacktestPage.tsx` | 回测继承 Run 冻结配置 | 有 runId 时从 `deriveBacktestSpec(run.screeningSpec)` 派生，禁止读 db.strategies/db.factorPool | 中 | 无 runId 时 legacy 手动配置不变 |
 
 ### 7.3 不修改的文件
 
@@ -567,15 +798,30 @@ const runId = searchParams.get('runId') ?? undefined
 | 1 | 首页问题被完整保存到 Draft Run | `getRun(runId).originalQuery.raw === query` |
 | 2 | Draft Run 刷新后仍存在 | `localStorage.getItem('alphamind_db_v2')` 包含 runs |
 | 3 | 策略保存为不可变快照 | 修改 `db.strategies[0].name` 后，`getRun(id).strategySnapshots[0].name` 不变 |
-| 4 | 筛选结果包含 runId | `completeScreening` 后 `run.candidateSnapshot.watchlistId` 指向正确的 watchlist |
+| 4 | 筛选结果包含 runId | `completeScreening` 后 `run.candidateSnapshotId` 指向独立 `CandidateSnapshot` |
 | 5 | 候选清单能恢复对应 Run | WatchlistPage 通过 `?runId=` 读取 `getRun(id)` |
-| 6 | 候选清单进入回测时自动继承配置 | BacktestPage 通过 `?runId=` 预填策略和因子 |
-| 7 | 回测结果包含 runId | `completeBacktest` 后 `run.backtestResultId` 指向正确的回测 |
-| 8 | 修改当前策略后旧 Run 不变化 | strategy snapshots 是深拷贝，不随 `db.strategies` 修改 |
+| 6 | 候选清单进入回测时自动继承配置 | BacktestPage 通过 `?runId=` 从 Run 快照派生 spec（非 db.strategies） |
+| 7 | 回测结果包含 runId | `completeBacktest` 后 `run.backtestRunId` → `BacktestRunRecord.runId === run.id` |
+| 8 | 修改当前策略后旧 Run 不变化 | strategy snapshots 深拷贝；`verifyConfigIntegrity(runId) === true` |
 | 9 | 筛选失败产生可诊断的 failed 状态 | `run.status === 'failed'` 且 `run.failureReason` 非空 |
 | 10 | 旧 localStorage 数据迁移后不丢失 | 迁移前存在的 strategies/watchlists 仍在 DB 中 |
 | 11 | 无 runId 的旧入口仍能工作 | 所有页面在 `runId === undefined` 时走原逻辑 |
 | 12 | 完整集成测试 | Query → Draft → Ready → Screening → Candidate → Backtest → Completed |
+
+### 8.1 闸门新增验收测试
+
+| 编号 | 验收项 | 验证方式 |
+|------|--------|---------|
+| G1 | 修改当前策略后，历史 Run 快照不变化 | 修改 `db.strategies[0].conditions` → `getRun(id).strategySnapshots[0].conditions` 不变 |
+| G2 | 删除当前因子后，历史 Run 仍可读取该因子配置 | `db.factorPool.splice(删除)` → `getRun(id).factorSnapshots` 仍含该因子完整快照 |
+| G3 | 删除 WatchList 后，CandidateSnapshot 仍完整 | 删除 `db.watchlists[i]` → `db.candidateSnapshots[run.candidateSnapshotId]` 完整可读 |
+| G4 | Backtest 只能使用 Run 中冻结的配置 | `startBacktest` 的 spec 必须来自 `deriveBacktestSpec(run.screeningSpec)`；传其他 spec 返回 null |
+| G5 | ready 状态直接修改配置必须失败 | `run.status = 'ready'` 后调用 `updateRunConfiguration` → 返回 null，快照不变 |
+| G6 | 修改配置会创建新 Run 或 revision | `updateRunConfiguration(readyRunId)` 失败后，`createDraftRun` 新 Run 独立存在 |
+| G7 | 相同规范化配置产生相同 configHash | 两次相同配置的 `computeConfigHash` 结果一致 |
+| G8 | 运行状态或时间戳变化不改变 configHash | 修改 `status`/`createdAt`/`attempt` 后 hash 不变；修改任一配置字段后 hash 变化 |
+| G9 | 旧 WatchList 和 Backtest 记录迁移后仍可读取 | 迁移前后 `db.watchlists` / `db.backtests` 逐条比对 |
+| G10 | 无法完整迁移的旧记录必须标记 legacy，不得伪造证据链 | 无 runId 旧记录 `runId === undefined`，不创建虚假 ExperimentRun |
 
 ---
 
@@ -609,17 +855,17 @@ const runId = searchParams.get('runId') ?? undefined
 
 ## 设计摘要
 
-1. `ExperimentRun` 是跨页面"信封"，串联首页 NL → 策略 → 因子 → 候选 → 回测，不改变现有页面内部逻辑。
-2. 策略和因子保存为**不可变快照**（方案 A），修改策略不影响历史 Run。
-3. 状态机 7 个状态，draft → ready → running_screen → screened → running_backtest → completed，另有 failed 分支。
-4. 存储沿用 `alphamind_db_v2`，新增 `DB.runs: ExperimentRun[]`，SEED_VERSION 升级到 5，迁移仅追加空数组。
-5. `runId` 通过 **URL query string** 在流程页面间传递，刷新不丢，无 runId 时走旧逻辑。
-6. 需新增 1 个文件、修改 8 个文件，不涉及 Market/Holdings/SimTrade/PIT/Zettaranc 等页面。
-7. HomePage 创建 Draft Run，WorkbenchPage 驱动状态机，WatchlistPage 提供"下一步→回测"引导，BacktestPage 继承配置。
-8. 12 项自动化验收标准覆盖完整集成测试路径。
-9. 5 个待决策问题中 4 个已从代码确认结论，1 个（级联删除）推迟到 V2。
-10. 未修改任何业务代码。
+1. `ExperimentRun` 是研究配置与结果的**唯一事实来源**（闸门1），不是附加引用信封。有 runId 时，筛选与回测全部从 Run 快照读取，禁止从 `db.strategies`/`db.factorPool` 重新组装。
+2. 策略和因子保存为**不可变快照**（方案 A）；`ready` 以后配置不可修改（闸门5），修改配置 = 创建新 Run。
+3. 候选结果独立持久化为 `CandidateSnapshot`（闸门2），即使 WatchList 被删除仍完整可读；WatchList 只引用其 id。
+4. 回测前冻结 `BacktestSpec`（闸门4），`BacktestRunRecord` 记录 spec 快照、configHash、状态与失败原因。
+5. `ScreeningSpec` 覆盖一次筛选可重放的所有配置（闸门3），不支持的字段显式 `'unsupported'`/`'none'`。
+6. `configHash`（闸门6）对规范化配置做 sha256，排除时间戳与运行状态，用于检测配置被意外修改。
+7. 旧记录按 legacy 兼容（闸门7）：不伪造 Run、不静默删除、只读标注，可复制为新的 Draft Run。
+8. 状态机 7 状态 + attempt 历史；失败重试复用原 Run，配置快照保留。
+9. 存储沿用 `alphamind_db_v2`，新增 `runs`/`candidateSnapshots`/`backtestRuns` 三集合，SEED_VERSION=5。
+10. 需新增 1 个文件、修改 9 个文件；12 项基础验收 + 10 项闸门验收（G1-G10）。
 
 ---
 
-> **未修改业务代码。设计文档完成，停止。**
+> **仅修订设计文档，未修改业务代码。停止。**
