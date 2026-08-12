@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
-import { Link, NavLink, Outlet } from 'react-router'
+import { Link, NavLink, Outlet, useLocation } from 'react-router'
 import { BrainCircuit } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Toaster } from '@/components/ui/sonner'
@@ -55,6 +55,21 @@ export default function Layout() {
   const navRef = useRef<HTMLElement>(null)
   const menuRefs = useRef<Record<string, HTMLButtonElement | null>>({})
   const menuItemRefs = useRef<Record<string, HTMLAnchorElement | null>>({})
+  const { pathname } = useLocation()
+
+  // 分页标题
+  const pageTitle = useMemo(() => {
+    for (const g of NAV_GROUPS) {
+      for (const item of g.items) {
+        if (item.to === pathname || pathname.startsWith(item.to + '/')) {
+          return `${item.label}｜AlphaMind 量化投研`
+        }
+      }
+    }
+    if (pathname === '/') return 'AlphaMind 量化投研'
+    return 'AlphaMind 量化投研'
+  }, [pathname])
+  useEffect(() => { document.title = pageTitle }, [pageTitle])
 
   // 点击外部关闭
   useEffect(() => {
