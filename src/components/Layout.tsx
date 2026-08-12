@@ -53,6 +53,8 @@ const NAV_GROUPS: NavGroup[] = [
 export default function Layout() {
   const [openGroup, setOpenGroup] = useState<string | null>(null)
   const navRef = useRef<HTMLElement>(null)
+  const menuRefs = useRef<Record<string, HTMLButtonElement | null>>({})
+  const menuItemRefs = useRef<Record<string, HTMLAnchorElement | null>>({})
 
   // 点击外部关闭
   useEffect(() => {
@@ -64,6 +66,42 @@ export default function Layout() {
     if (openGroup) document.addEventListener('mousedown', handleClickOutside)
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [openGroup])
+
+  // 菜单键盘导航
+  const handleButtonKeyDown = (e: React.KeyboardEvent, label: string, items: NavGroup['items']) => {
+    if (e.key === 'Enter' || e.key === ' ' || e.key === 'ArrowDown') {
+      e.preventDefault()
+      setOpenGroup(label)
+      // 聚焦首个菜单项
+      setTimeout(() => {
+        const firstKey = `${label}-0`
+        menuItemRefs.current[firstKey]?.focus()
+      }, 0)
+    }
+  }
+
+  const handleMenuKeyDown = (e: React.KeyboardEvent, label: string, itemIndex: number, items: NavGroup['items']) => {
+    if (e.key === 'Escape') {
+      e.preventDefault()
+      setOpenGroup(null)
+      menuRefs.current[label]?.focus()
+      return
+    }
+    if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+      e.preventDefault()
+      const delta = e.key === 'ArrowDown' ? 1 : -1
+      const nextIndex = ((itemIndex + delta) % items.length + items.length) % items.length
+      menuItemRefs.current[`${label}-${nextIndex}`]?.focus()
+    }
+    if (e.key === 'Home') {
+      e.preventDefault()
+      menuItemRefs.current[`${label}-0`]?.focus()
+    }
+    if (e.key === 'End') {
+      e.preventDefault()
+      menuItemRefs.current[`${label}-${items.length - 1}`]?.focus()
+    }
+  }
 
   return (
     <div className="min-h-screen bg-gray-50 font-sans text-gray-900 antialiased">
@@ -109,6 +147,8 @@ export default function Layout() {
                             : 'text-gray-400 hover:bg-white/5 hover:text-gray-200',
                         )}
                         onClick={() => setOpenGroup(isOpen ? null : group.label)}
+                        onKeyDown={(e) => handleButtonKeyDown(e, group.label, group.items)}
+                        ref={(el) => { menuRefs.current[group.label] = el }}
                         aria-haspopup="menu"
                         aria-expanded={isOpen}
                       >
@@ -117,11 +157,13 @@ export default function Layout() {
                       </button>
                       {isOpen && (
                         <div className="absolute left-0 top-full min-w-[140px] rounded-b border border-t-0 border-gray-600 bg-[#1A1A2E] py-1 shadow-xl" role="menu">
-                          {group.items.map((item) => (
+                          {group.items.map((item, idx) => (
                             <NavLink
                               key={item.to}
                               to={item.to}
                               onClick={() => setOpenGroup(null)}
+                              onKeyDown={(e) => handleMenuKeyDown(e, group.label, idx, group.items)}
+                              ref={(el) => { menuItemRefs.current[`${group.label}-${idx}`] = el }}
                               role="menuitem"
                               className={({ isActive }) =>
                                 cn(

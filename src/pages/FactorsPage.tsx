@@ -260,7 +260,7 @@ function ResearchEvalSection({ research }: { research: FactorResearch }) {
           {research.window.stocks} 只股票 · 方法：{research.method}
         </p>
       </div>
-      <div className="overflow-x-auto">
+      <div className="overflow-x-auto max-w-full">
         <table className="w-full min-w-[860px] border-collapse text-xs">
           <thead>
             <tr className="border-b border-gray-200">
