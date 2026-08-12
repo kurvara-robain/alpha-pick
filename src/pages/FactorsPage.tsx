@@ -248,6 +248,7 @@ export default function FactorsPage() {
   const [search, setSearch] = useState('')
   const [sortBy, setSortBy] = useState<'name' | 'ic'>('ic')
   const [viewMode, setViewMode] = useState<'cards' | 'table'>('cards')
+  const [activeTab, setActiveTab] = useState<'library' | 'mining' | 'diagnostics'>('library')
   const [detailFactor, setDetailFactor] = useState<Factor | null>(null)
 
   const db = getDB()
@@ -323,6 +324,23 @@ export default function FactorsPage() {
         </div>
       </div>
 
+      {/* 标签页 */}
+      <div className="flex items-center gap-0.5 border-b border-gray-200 pb-0">
+        {(['library','mining','diagnostics'] as const).map(tab => (
+          <button key={tab}
+            onClick={() => setActiveTab(tab)}
+            className={cn(
+              'px-3 py-1.5 text-xs font-medium rounded-t transition-colors -mb-px',
+              activeTab === tab
+                ? 'border-x border-t border-gray-200 bg-white text-gray-900'
+                : 'text-gray-400 hover:text-gray-600 hover:bg-gray-50'
+            )}>
+            {{library:'因子库',mining:'因子挖掘',diagnostics:'实测诊断'}[tab]}
+          </button>
+        ))}
+      </div>
+
+      {activeTab === 'library' && <>
       {/* 因子列表 */}
       {viewMode === 'cards' ? (
         <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
@@ -403,9 +421,18 @@ export default function FactorsPage() {
       />
 
       {/* 底部面板 */}
+      </>
+      }
+
+      {activeTab === 'mining' && <>
       <LazyLoader><FactorExpressionEditor /></LazyLoader>
       <LazyLoader><DiscoveredFactors /></LazyLoader>
+      </>
+      }
+      {activeTab === 'diagnostics' && <>
       <LazyLoader><FactorDiagnostics /></LazyLoader>
+      </>
+      }
     </div>
   )
 }
