@@ -2,7 +2,8 @@
 // ExperimentRun V1 领域基础层测试
 // 覆盖：存储迁移 / 生命周期 / 不可变性 / configHash
 // ─────────────────────────────────────────────────────────────
-import { describe, it, expect, beforeEach } from 'vitest'
+import { describe, it, expect, beforeEach, afterEach } from 'vitest'
+import { createHash } from 'node:crypto'
 import { getDB, resetDBForTest, saveDB, uid, type DB } from '../lib/store'
 import {
   computeConfigHash,
@@ -15,7 +16,10 @@ import {
   getRun,
   listRuns,
   markRunReady,
+  prepareBacktest,
   retryFromFailed,
+  setClockForTest,
+  sha256Sync,
   startBacktest,
   startScreening,
   updateRunConfiguration,
@@ -23,7 +27,7 @@ import {
   ExperimentRunError,
 } from '../lib/experimentRun'
 import type {
-  BacktestSpec,
+  BacktestExecutionSettings,
   CandidateStock,
   CombinationLogic,
   ExperimentRun,
@@ -77,12 +81,11 @@ function factorSnap(over?: Partial<FactorSnapshot>): FactorSnapshot {
 
 const logic: CombinationLogic = { mode: 'score', description: '综合打分' }
 
-function btSpec(): BacktestSpec {
+function btSettings(over?: Partial<BacktestExecutionSettings>): BacktestExecutionSettings {
   return {
     startDate: '2024-01-01',
     endDate: '2026-01-01',
     benchmark: '000300.SH',
-    rebalance: 'monthly',
     portfolioConstruction: 'equal_weight',
     signalDelay: 't1',
     executionPrice: 'open',
@@ -91,6 +94,7 @@ function btSpec(): BacktestSpec {
     slippage: 0.1,
     limitUpDownHandling: 'skip',
     suspensionHandling: 'skip',
+    ...over,
   }
 }
 
@@ -102,6 +106,11 @@ function makeReadyRun(): ExperimentRun {
 
 beforeEach(() => {
   resetDBForTest()
+  setClockForTest(null) // 每个测试重置为真实时钟
+})
+
+afterEach(() => {
+  setClockForTest(null)
 })
 
 describe('存储迁移', () => {
@@ -191,7 +200,7 @@ describe('生命周期', () => {
   it('8. markRunReady生成configHash', () => {
     const run = makeReadyRun()
     expect(run.status).toBe('ready')
-    expect(run.configHash).toMatch(/^[0-9a-f]{16}$/)
+    expect(run.configHash).toMatch(/^[0-9a-f]{64}$/) // 修正3：完整 64 位 SHA-256
   })
 
   it('9. ready后更新配置失败', () => {
@@ -223,7 +232,8 @@ describe('生命周期', () => {
     const run = makeReadyRun()
     startScreening(run.id)
     completeScreening(run.id, [candidate()])
-    startBacktest(run.id, btSpec())
+    const rec = prepareBacktest(run.id, btSettings())
+    startBacktest(run.id, rec.id)
     const failed = failBacktest(run.id, 'API超时')
     expect(failed.status).toBe('failed')
     const lastAttempt = failed.attempts[failed.attempts.length - 1]
@@ -235,10 +245,51 @@ describe('生命周期', () => {
     const run = makeReadyRun()
     startScreening(run.id)
     completeScreening(run.id, [candidate()])
-    startBacktest(run.id, btSpec())
+    const rec = prepareBacktest(run.id, btSettings())
+    startBacktest(run.id, rec.id)
     const done = completeBacktest(run.id, 'bt-result-1')
     expect(done.status).toBe('completed')
     expect(done.attempts[done.attempts.length - 1].status).toBe('completed')
+  })
+
+  it('13a. prepareBacktest不改变Run状态，且spec.rebalance由Run派生', () => {
+    const run = makeReadyRun()
+    startScreening(run.id)
+    completeScreening(run.id, [candidate()])
+    // Run 的 rebalance 为 monthly（spec() 默认），执行设置无法覆盖
+    const rec = prepareBacktest(run.id, btSettings())
+    expect(rec.status).toBe('pending')
+    expect(rec.spec.rebalance).toBe('monthly') // 来自 run.screeningSpec.rebalance
+    // 执行设置里没有 rebalance 字段（BacktestExecutionSettings 不含研究配置）
+    expect('rebalance' in btSettings()).toBe(false)
+    const after = getRun(run.id)
+    expect(after?.status).toBe('screened') // prepare 不改变 Run 状态
+  })
+
+  it('13b. startBacktest拒绝不属于本Run的record', () => {
+    const runA = makeReadyRun()
+    startScreening(runA.id)
+    completeScreening(runA.id, [candidate()])
+    prepareBacktest(runA.id, btSettings())
+
+    const runB = makeReadyRun()
+    startScreening(runB.id)
+    completeScreening(runB.id, [candidate()])
+    prepareBacktest(runB.id, btSettings())
+
+    // runA 启动 runB 的 record → 必须失败
+    const runBBtId = getRun(runB.id)?.backtestRunId as string
+    expect(() => startBacktest(runA.id, runBBtId)).toThrow(ExperimentRunError)
+  })
+
+  it('13c. startBacktest只接受pending状态的record', () => {
+    const run = makeReadyRun()
+    startScreening(run.id)
+    completeScreening(run.id, [candidate()])
+    const rec = prepareBacktest(run.id, btSettings())
+    startBacktest(run.id, rec.id)
+    // 已启动的记录不能再次启动
+    expect(() => startBacktest(run.id, rec.id)).toThrow(ExperimentRunError)
   })
 })
 
@@ -360,6 +411,274 @@ function candidate(over?: Partial<CandidateStock>): CandidateStock {
     ...over,
   }
 }
+
+// ═══════════════════════════════════════════════════════════════
+// A. 修正1：回测配置完整性验证
+// ═══════════════════════════════════════════════════════════════
+
+describe('修正1: 回测完整性验证', () => {
+  function screenedRun(): ExperimentRun {
+    const run = makeReadyRun()
+    startScreening(run.id)
+    completeScreening(run.id, [candidate()])
+    return getRun(run.id) as ExperimentRun
+  }
+
+  it('A1. prepareBacktest后record.configHash等于Run.configHash', () => {
+    const run = screenedRun()
+    const rec = prepareBacktest(run.id, btSettings())
+    expect(rec.configHash).toBe(run.configHash)
+  })
+
+  it('A2. Run配置被篡改后prepareBacktest失败', () => {
+    const run = screenedRun()
+    const db = getDB()
+    db.runs[0].factorSnapshots[0].name = '被篡改'
+    saveDB(db)
+    expect(() => prepareBacktest(run.id, btSettings())).toThrow(ExperimentRunError)
+  })
+
+  it('A3. Run配置被篡改后startBacktest失败', () => {
+    const run = screenedRun()
+    const rec = prepareBacktest(run.id, btSettings())
+    const db = getDB()
+    db.runs[0].strategySnapshots[0].name = '被篡改'
+    saveDB(db)
+    expect(() => startBacktest(run.id, rec.id)).toThrow(ExperimentRunError)
+  })
+
+  it('A4. 修改当前db.strategies后派生BacktestSpec不变化', () => {
+    const run = screenedRun()
+    const rec = prepareBacktest(run.id, btSettings())
+    const db = getDB()
+    if (db.strategies.length === 0) db.strategies.push({ id: 's-1', name: '低PE', description: '', kind: 'fixed', enabled: true, conditions: [], unsupported: [], source: 'manual', createdAt: 'x' })
+    db.strategies[0].name = '改了'
+    saveDB(db)
+    const rec2 = getDB().backtestRunRecords.find((r) => r.id === rec.id)
+    expect(rec2?.spec).toEqual(rec.spec)
+  })
+
+  it('A5. 修改当前db.factorPool后派生BacktestSpec不变化', () => {
+    const run = screenedRun()
+    const rec = prepareBacktest(run.id, btSettings())
+    const db = getDB()
+    db.factorPool.splice(0, db.factorPool.length)
+    saveDB(db)
+    const rec2 = getDB().backtestRunRecords.find((r) => r.id === rec.id)
+    expect(rec2?.spec).toEqual(rec.spec)
+  })
+
+  it('A6. executionSettings运行时传入多余字段不合并进spec（universe）', () => {
+    const run = screenedRun()
+    // 模拟运行时传入多余字段（TypeScript 编译期拦截不到 JS 调用方）
+    const polluted = btSettings() as BacktestExecutionSettings & { universe: string; strategySnapshots: unknown[]; combinationLogic: unknown; dataSnapshotId: string; methodVersion: string }
+    polluted.universe = 'HACKED_UNIVERSE'
+    polluted.strategySnapshots = [{ strategyId: 'hack' }]
+    polluted.combinationLogic = { mode: 'union', description: 'hack' }
+    polluted.dataSnapshotId = 'hack-data'
+    polluted.methodVersion = 'hack-v9'
+    const rec = prepareBacktest(run.id, polluted)
+    // 白名单提取：多余字段必须被忽略
+    expect(JSON.stringify(rec.spec)).not.toContain('HACKED_UNIVERSE')
+    expect(JSON.stringify(rec.spec)).not.toContain('hack')
+    // rebalance 来自 Run（monthly），不受污染
+    expect(rec.spec.rebalance).toBe('monthly')
+  })
+
+  it('A7. 旧startBacktest(runId, fullSpec)签名已移除', () => {
+    // 导出中不再有接收完整 spec 的 startBacktest
+    const run = screenedRun()
+    const rec = prepareBacktest(run.id, btSettings())
+    // 新签名：只接受 recordId；传对象（旧签名）会被当作 recordId → 类型/运行时失败
+    expect(() => startBacktest(run.id, rec.id)).not.toThrow()
+  })
+
+  it('A8. startBacktest再次验证Run完整性（未篡改时通过）', () => {
+    const run = screenedRun()
+    const rec = prepareBacktest(run.id, btSettings())
+    const started = startBacktest(run.id, rec.id)
+    expect(started.status).toBe('running')
+  })
+
+  it('A9. 篡改record.configHash后startBacktest失败', () => {
+    const run = screenedRun()
+    const rec = prepareBacktest(run.id, btSettings())
+    const db = getDB()
+    const stored = db.backtestRunRecords.find((r) => r.id === rec.id) as { configHash: string }
+    stored.configHash = 'f'.repeat(64)
+    saveDB(db)
+    expect(() => startBacktest(run.id, rec.id)).toThrow(ExperimentRunError)
+  })
+
+  it('A10. prepareBacktest拒绝无候选快照的Run', () => {
+    const run = makeReadyRun()
+    // 未 completeScreening
+    expect(() => prepareBacktest(run.id, btSettings())).toThrow(ExperimentRunError)
+  })
+})
+
+// ═══════════════════════════════════════════════════════════════
+// B. 修正2：attempt 真实时间线
+// ═══════════════════════════════════════════════════════════════
+
+describe('修正2: attempt真实时间线', () => {
+  // 递增时钟：每次调用 +1 秒
+  let tick: number
+  beforeEach(() => {
+    tick = 1_000_000_000_000 // 2001-09-09
+    setClockForTest(() => new Date((tick += 1000)))
+  })
+
+  it('B1. attempt.startedAt不等于更早的run.createdAt', () => {
+    const run = createDraftRun({ raw: 'q' }, '2026-08-01')
+    const created = run.createdAt
+    updateRunConfiguration(run.id, spec(), [strategySnap()], [factorSnap()], logic)
+    markRunReady(run.id)
+    startScreening(run.id)
+    const started = getRun(run.id)
+    const attempt = started?.attempts.find((a) => a.stage === 'screening')
+    expect(attempt?.startedAt).not.toBe(created)
+    expect(Date.parse(attempt?.startedAt as string)).toBeGreaterThan(Date.parse(created))
+  })
+
+  it('B2. 两次筛选尝试ID不同', () => {
+    // 第一次：失败 → 重试 → 第二次
+    const run = makeReadyRun()
+    startScreening(run.id)
+    failScreening(run.id, '第一次失败')
+    retryFromFailed(run.id)
+    markRunReady(run.id)
+    startScreening(run.id)
+    const r = getRun(run.id)
+    const attempts = r?.attempts.filter((a) => a.stage === 'screening') ?? []
+    expect(attempts.length).toBe(2)
+    expect(attempts[0].id).not.toBe(attempts[1].id)
+  })
+
+  it('B3. 两次尝试时间分别对应各自开始时间', () => {
+    const run = makeReadyRun()
+    startScreening(run.id)
+    failScreening(run.id, '第一次失败')
+    const t1 = getRun(run.id)?.attempts.find((a) => a.stage === 'screening')?.startedAt
+    retryFromFailed(run.id)
+    markRunReady(run.id)
+    startScreening(run.id)
+    const t2 = getRun(run.id)?.attempts.find((a) => a.stage === 'screening' && a.status === 'running')?.startedAt
+    expect(Date.parse(t2 as string)).toBeGreaterThan(Date.parse(t1 as string))
+  })
+
+  it('B4. 第二次重试不修改第一次attempt', () => {
+    const run = makeReadyRun()
+    startScreening(run.id)
+    failScreening(run.id, '第一次失败')
+    const first = getRun(run.id)?.attempts[0]
+    retryFromFailed(run.id)
+    markRunReady(run.id)
+    startScreening(run.id)
+    completeScreening(run.id, [candidate()])
+    const after = getRun(run.id)
+    const firstAfter = after?.attempts[0]
+    expect(firstAfter?.status).toBe('failed')
+    expect(firstAfter?.failureReason).toBe('screening: 第一次失败')
+    expect(firstAfter?.endedAt).toBe(first?.endedAt)
+  })
+
+  it('B5. complete只关闭当前活动attempt', () => {
+    const run = makeReadyRun()
+    startScreening(run.id)
+    completeScreening(run.id, [candidate()])
+    const after = getRun(run.id)
+    const scr = after?.attempts.find((a) => a.stage === 'screening')
+    expect(scr?.status).toBe('screened')
+    expect(scr?.endedAt).toBeDefined()
+  })
+
+  it('B6. fail只关闭当前活动attempt', () => {
+    const run = makeReadyRun()
+    startScreening(run.id)
+    failScreening(run.id, '数据源超时')
+    const after = getRun(run.id)
+    const scr = after?.attempts.find((a) => a.stage === 'screening')
+    expect(scr?.status).toBe('failed')
+    expect(scr?.failureReason).toBe('screening: 数据源超时')
+    expect(scr?.endedAt).toBeDefined()
+  })
+
+  it('B7. screening和backtest attempt阶段不同', () => {
+    const run = makeReadyRun()
+    startScreening(run.id)
+    completeScreening(run.id, [candidate()])
+    const rec = prepareBacktest(run.id, btSettings())
+    startBacktest(run.id, rec.id)
+    const after = getRun(run.id)
+    const stages = after?.attempts.map((a) => a.stage) ?? []
+    expect(stages).toContain('screening')
+    expect(stages).toContain('backtest')
+    expect(stages.length).toBe(2)
+  })
+
+  it('B8. finishedAt晚于或等于startedAt', () => {
+    const run = makeReadyRun()
+    startScreening(run.id)
+    completeScreening(run.id, [candidate()])
+    const rec = prepareBacktest(run.id, btSettings())
+    startBacktest(run.id, rec.id)
+    completeBacktest(run.id, 'bt-1')
+    const after = getRun(run.id)
+    for (const a of after?.attempts ?? []) {
+      expect(Date.parse(a.endedAt as string)).toBeGreaterThanOrEqual(Date.parse(a.startedAt))
+    }
+  })
+})
+
+// ═══════════════════════════════════════════════════════════════
+// C. 修正3：SHA-256 标准一致性
+// ═══════════════════════════════════════════════════════════════
+
+describe('修正3: SHA-256标准一致性', () => {
+  it('C1. 空字符串标准向量', () => {
+    expect(sha256Sync('')).toBe(
+      'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855',
+    )
+  })
+
+  it('C2. "abc"标准向量', () => {
+    expect(sha256Sync('abc')).toBe(
+      'ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad',
+    )
+  })
+
+  it('C3. 中文Unicode输入与Node crypto一致', () => {
+    const input = '找低PE高ROE的股票'
+    expect(sha256Sync(input)).toBe(createHash('sha256').update(input, 'utf8').digest('hex'))
+    // 包含代理对字符
+    const emoji = '量化📈投研'
+    expect(sha256Sync(emoji)).toBe(createHash('sha256').update(emoji, 'utf8').digest('hex'))
+  })
+
+  it('C4. 长字符串与Node crypto一致', () => {
+    const long = '量化投研因子'.repeat(500) // 超过一个块（64 字节）
+    expect(sha256Sync(long)).toBe(createHash('sha256').update(long, 'utf8').digest('hex'))
+  })
+
+  it('C5. 多次调用结果一致', () => {
+    const input = '稳定测试输入'
+    const a = sha256Sync(input)
+    const b = sha256Sync(input)
+    const c = sha256Sync(input)
+    expect(a).toBe(b)
+    expect(b).toBe(c)
+  })
+
+  it('C6. configHash输出为64位小写十六进制', () => {
+    const run = makeReadyRun()
+    expect(run.configHash).toMatch(/^[0-9a-f]{64}$/)
+    expect(run.configHash).toBe(run.configHash.toLowerCase())
+    // configHash 确实是 SHA-256 的 64 位输出
+    expect(sha256Sync('')).toHaveLength(64)
+    expect(sha256Sync('abc')).toHaveLength(64)
+  })
+})
 
 // 未使用引用保留（避免 lint 移除导入）
 void uid

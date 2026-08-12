@@ -566,12 +566,22 @@ function getCandidateSnapshot(runId: string): CandidateSnapshot | null
 
 // ── 回测 ──
 
-function startBacktest(runId: string, spec: BacktestSpec): ExperimentRun | null
-// 前置: run.status === 'screened'
+/** 阶段1：从 Run 派生研究配置，仅接受执行层设置，冻结为 pending 记录（修正1） */
+function prepareBacktest(runId: string, executionSettings: BacktestExecutionSettings): BacktestRunRecord
+// 输入: runId + 执行层设置（不含策略/因子/股票池/组合/rebalance）
+// 前置: run.status === 'screened' 且存在 candidateSnapshotId
 // 后置:
-//   db.backtestRuns.push({ id, runId, spec, configHash, status: 'running', createdAt })
+//   db.backtestRunRecords.push({ id, runId, spec: { ...executionSettings, rebalance: run.screeningSpec.rebalance }, configHash, status: 'pending' })
 //   run.backtestRunId = record.id
-//   run.status = 'running_backtest'
+//   run.status 不变（仍为 screened）
+// 失败: rebalance 由 Run 派生，调用方无法覆盖
+
+/** 阶段2：启动已冻结的 BacktestRunRecord */
+function startBacktest(runId: string, backtestRunRecordId: string): BacktestRunRecord
+// 前置: run.status === 'screened' 且 run.backtestRunId === backtestRunRecordId 且 record.status === 'pending'
+// 后置: record.status = 'running'; run.status = 'running_backtest'
+// 失败: record 不属于本 Run → ExperimentRunError(INVALID_TRANSITION)
+//   record 非 pending → ExperimentRunError(INVALID_TRANSITION)
 
 function completeBacktest(runId: string, backtestResultId: string): ExperimentRun | null
 // 前置: run.status === 'running_backtest' 且存在 backtestRunId

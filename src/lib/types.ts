@@ -223,6 +223,26 @@ export interface BacktestSpec {
   suspensionHandling: 'skip' | 'hold'
 }
 
+/**
+ * 回测执行层设置（修正1）
+ * 仅允许调用方提供与 Run 研究配置无关的执行参数。
+ * 研究配置（策略/因子/股票池/组合逻辑/rebalance）必须由 Run 派生，
+ * 不得出现在此处——防止外部配置覆盖 Run 快照。
+ */
+export interface BacktestExecutionSettings {
+  startDate: string
+  endDate: string
+  benchmark: string
+  portfolioConstruction: 'equal_weight' | 'score_weight'
+  signalDelay: 't0' | 't1'
+  executionPrice: 'open' | 'close'
+  commission: number
+  stampDuty: number
+  slippage: number
+  limitUpDownHandling: 'skip' | 'block'
+  suspensionHandling: 'skip' | 'hold'
+}
+
 export type ExperimentRunStatus =
   | 'draft'
   | 'ready'
@@ -260,10 +280,12 @@ export interface CandidateSnapshot {
 
 /** 失败重试历史（闸门5） */
 export interface ExperimentAttempt {
+  id: string // 每次尝试唯一 ID（同阶段重试创建新 ID）
   attempt: number
-  startedAt: string
-  endedAt: string
-  status: 'screened' | 'failed' | 'completed'
+  stage: 'screening' | 'backtest' // 尝试阶段
+  startedAt: string // 本次操作开始时间（非 run.createdAt）
+  endedAt?: string // 完成/失败时间（进行中为 undefined）
+  status: 'running' | 'screened' | 'failed' | 'completed'
   failureReason?: string
   candidateSnapshotId?: string
   backtestRunId?: string
