@@ -2,7 +2,6 @@
 // V1.5 因子诊断仪表盘
 // IC 衰减曲线 · 分市场表现 · 相关性矩阵 · 覆盖率 · 拥挤度
 // ─────────────────────────────────────────────────────────────
-import { useMemo, useState } from 'react'
 import {
   BarChart3,
   TrendingDown,
@@ -24,20 +23,23 @@ import {
   Cell,
   Legend,
 } from 'recharts'
-import type { FactorResearch, FactorResearchResult } from '@/lib/marketData'
+import type { FactorResearchResult } from '@/lib/marketData'
 import { loadFactorResearch } from '@/lib/marketData'
 import { useAsync } from '@/lib/useAsync'
 import { LoadingBlock } from '@/components/AsyncStatus'
+
+/** 本地增强：FactorResearchResult 无 id（id 是 research.results 记录的 key），图表/表格需要 id 做 key 与查询 */
+type FactorResultWithId = FactorResearchResult & { id: string }
 
 // ═══════════════════════════════════════════════════════════════
 // IC 衰减曲线（模拟数据，因子研究 JSON 提供前瞻 N 日 IC）
 // ═══════════════════════════════════════════════════════════════
 
-function ICDecayChart({ factors, research }: { factors: FactorResearchResult[]; research: FactorResearch }) {
+function ICDecayChart({ factors }: { factors: FactorResultWithId[] }) {
   // 取 IC 最高的前 5 个因子
   const top5 = [...factors]
-    .filter((f) => f.results?.dic20 !== null)
-    .sort((a, b) => Math.abs((b.results?.dic20 ?? 0)) - Math.abs((a.results?.dic20 ?? 0)))
+    .filter((f) => f.dic20 !== null)
+    .sort((a, b) => Math.abs(b.dic20) - Math.abs(a.dic20))
     .slice(0, 5)
 
   // 构建衰减数据（用 dic20/dicir20 近似表示不同前瞻期的 IC）
@@ -46,7 +48,7 @@ function ICDecayChart({ factors, research }: { factors: FactorResearchResult[]; 
     const point: Record<string, number | string> = { horizon: `${h}日` }
     for (const f of top5) {
       // 模拟衰减：越远期 IC 越小
-      const baseIC = f.results?.dic20 ?? 0
+      const baseIC = f.dic20
       const decay = Math.max(0, Math.abs(baseIC) * Math.exp(-h / 15))
       point[f.id] = Number((baseIC > 0 ? decay : -decay).toFixed(4))
     }
@@ -88,10 +90,10 @@ function ICDecayChart({ factors, research }: { factors: FactorResearchResult[]; 
 // 因子得分排行
 // ═══════════════════════════════════════════════════════════════
 
-function FactorRanking({ factors }: { factors: FactorResearchResult[] }) {
+function FactorRanking({ factors }: { factors: FactorResultWithId[] }) {
   const ranked = [...factors]
-    .filter((f) => f.results?.dic20 !== null)
-    .sort((a, b) => Math.abs(b.results?.dic20 ?? 0) - Math.abs(a.results?.dic20 ?? 0))
+    .filter((f) => f.dic20 !== null)
+    .sort((a, b) => Math.abs(b.dic20) - Math.abs(a.dic20))
 
   return (
     <div className="rounded-lg border border-gray-200 bg-white p-4">
@@ -109,9 +111,9 @@ function FactorRanking({ factors }: { factors: FactorResearchResult[] }) {
               formatter={(v: number) => v.toFixed(4)}
               labelFormatter={(l: string) => ranked.find((f) => f.name === l)?.id ?? l}
             />
-            <Bar dataKey={(d: FactorResearchResult) => d.results?.dic20 ?? 0} radius={[0, 4, 4, 0]}>
+            <Bar dataKey={(d: FactorResearchResult) => d.dic20} radius={[0, 4, 4, 0]}>
               {ranked.slice(0, 20).map((f) => (
-                <Cell key={f.id} fill={(f.results?.dic20 ?? 0) >= 0 ? '#10b981' : '#ef4444'} fillOpacity={0.7} />
+                <Cell key={f.id} fill={f.dic20 >= 0 ? '#10b981' : '#ef4444'} fillOpacity={0.7} />
               ))}
             </Bar>
           </BarChart>
@@ -125,8 +127,8 @@ function FactorRanking({ factors }: { factors: FactorResearchResult[] }) {
 // 因子统计摘要表
 // ═══════════════════════════════════════════════════════════════
 
-function FactorSummaryTable({ factors }: { factors: FactorResearchResult[] }) {
-  const sorted = [...factors].sort((a, b) => Math.abs(b.results?.dic20 ?? 0) - Math.abs(a.results?.dic20 ?? 0))
+function FactorSummaryTable({ factors }: { factors: FactorResultWithId[] }) {
+  const sorted = [...factors].sort((a, b) => Math.abs(b.dic20) - Math.abs(a.dic20))
 
   return (
     <div className="rounded-lg border border-gray-200 bg-white">
@@ -151,7 +153,7 @@ function FactorSummaryTable({ factors }: { factors: FactorResearchResult[] }) {
           </thead>
           <tbody>
             {sorted.map((f) => {
-              const r = f.results
+              const r = f
               const rating = !r?.dic20 ? 'N/A' :
                 Math.abs(r.dic20) >= 0.06 ? 'A' :
                 Math.abs(r.dic20) >= 0.04 ? 'B' :
@@ -170,10 +172,10 @@ function FactorSummaryTable({ factors }: { factors: FactorResearchResult[] }) {
                     {r?.dic20?.toFixed(4) ?? '—'}
                   </td>
                   <td className="px-3 py-2 text-right font-mono tabular-nums text-gray-700">{r?.dicir20?.toFixed(2) ?? '—'}</td>
-                  <td className="px-3 py-2 text-right font-mono tabular-nums text-gray-700">{r?.tstat?.toFixed(2) ?? '—'}</td>
-                  <td className="px-3 py-2 text-right font-mono tabular-nums text-gray-700">{r?.posRatio != null ? `${(r.posRatio * 100).toFixed(0)}%` : '—'}</td>
+                  <td className="px-3 py-2 text-right font-mono tabular-nums text-gray-700">{r?.ic20?.tstat?.toFixed(2) ?? '—'}</td>
+                  <td className="px-3 py-2 text-right font-mono tabular-nums text-gray-700">{r?.ic20?.posRatio != null ? `${(r.ic20.posRatio * 100).toFixed(0)}%` : '—'}</td>
                   <td className="px-3 py-2 text-right font-mono tabular-nums text-gray-700">{r?.spread20?.toFixed(2) ?? '—'}%</td>
-                  <td className="px-3 py-2 text-right font-mono tabular-nums text-gray-400">{r?.dates ?? '—'}</td>
+                  <td className="px-3 py-2 text-right font-mono tabular-nums text-gray-400">{r?.ic20?.dates ?? '—'}</td>
                   <td className="px-3 py-2"><Badge variant="outline" className={ratingColor}>{rating}</Badge></td>
                 </tr>
               )
@@ -198,7 +200,7 @@ export default function FactorDiagnostics() {
   const research = researchState.data
   if (!research) return null
 
-  const factors = research.factors ?? []
+  const factors: FactorResultWithId[] = Object.entries(research.results ?? {}).map(([id, r]) => ({ id, ...r }))
 
   return (
     <div className="space-y-4">
@@ -221,7 +223,7 @@ export default function FactorDiagnostics() {
           <FactorRanking factors={factors} />
         </TabsContent>
         <TabsContent value="decay" className="mt-4">
-          <ICDecayChart factors={factors} research={research} />
+          <ICDecayChart factors={factors} />
         </TabsContent>
         <TabsContent value="summary" className="mt-4">
           <FactorSummaryTable factors={factors} />

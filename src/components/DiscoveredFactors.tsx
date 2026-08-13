@@ -2,10 +2,10 @@
 // 自动发现因子面板 — 展示遗传挖掘结果 + 一键入库
 // ─────────────────────────────────────────────────────────────
 import { useState, useEffect } from 'react'
-import { Dna, FlaskConical, Plus, Sparkles, RefreshCw } from 'lucide-react'
+import { Dna, FlaskConical, Plus, RefreshCw } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { getDB, updateDB } from '@/lib/store'
+import { updateDB } from '@/lib/store'
 
 interface DiscoveredFactor {
   expression: string
@@ -14,12 +14,6 @@ interface DiscoveredFactor {
   icir: number
   valid_days: number
   abs_ic_mean: number
-}
-
-interface DiscoveredMeta {
-  factors: DiscoveredFactor[]
-  discovered_at?: string
-  count?: number
 }
 
 export default function DiscoveredFactorsPanel() {

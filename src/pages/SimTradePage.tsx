@@ -1,15 +1,13 @@
 // ─────────────────────────────────────────────────────────────
 // 模拟交易台 — 完整版：下单 / T+1 / 涨跌停 / 费用 / 持仓 / 历史
 // ─────────────────────────────────────────────────────────────
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState, useSyncExternalStore } from 'react'
 import {
-  ArrowDownRight,
-  ArrowUpRight,
   DollarSign,
+  FolderPlus,
   History,
-  RefreshCw,
   Search,
-  TrendingDown,
+  Trash2,
   TrendingUp,
   Wallet,
   X,
@@ -23,8 +21,16 @@ import { loadUniverse } from '@/lib/marketData'
 import type { UniverseStock } from '@/lib/marketData'
 import { useAsync } from '@/lib/useAsync'
 import { fmtNum, fmtPct, pctColor } from '@/lib/format'
-import { executeBuy, executeSell, loadAccount, markToMarket, resetAccount, saveAccount } from '@/lib/simTrade'
+import { executeBuy, executeSell, loadAccount, markToMarket, resetAccount } from '@/lib/simTrade'
 import type { SimAccount, SimOrder } from '@/lib/simTrade'
+import { getCandidateSnapshot, listRuns } from '@/lib/experimentRun'
+import {
+  createPaperPortfolioFromCandidate,
+  deletePortfolio,
+  listPortfolios,
+  markPortfolioToMarket,
+  subscribePortfolios,
+} from '@/lib/portfolioStore'
 
 // ═══════════════════════════════════════════════════════════════
 // 账户摘要卡片
@@ -345,6 +351,119 @@ function TradeStats({ account }: { account: SimAccount }) {
 }
 
 // ═══════════════════════════════════════════════════════════════
+// 模拟组合（V2）— 从候选快照创建等权组合（独立于 legacy simTrade 引擎）
+// ═══════════════════════════════════════════════════════════════
+
+function PaperPortfolioPanel({ universe }: { universe: UniverseStock[] }) {
+  const portfolios = useSyncExternalStore(subscribePortfolios, listPortfolios)
+  const [runOptions, setRunOptions] = useState<{ runId: string; label: string }[]>([])
+  const [selectedRunId, setSelectedRunId] = useState('')
+  const [pfName, setPfName] = useState('')
+  const [capital, setCapital] = useState('1000000')
+  const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null)
+
+  useEffect(() => {
+    const opts = listRuns()
+      .filter((r) => r.candidateSnapshotId)
+      .map((r) => ({ runId: r.id, label: `${r.originalQuery.raw}（${r.asOfDate}）` }))
+    setRunOptions(opts)
+    if (opts.length > 0) setSelectedRunId((prev) => prev || opts[0].runId)
+  }, [])
+
+  const handleCreate = () => {
+    setMsg(null)
+    if (!selectedRunId) return setMsg({ ok: false, text: '没有可用的候选快照（需先完成筛选）' })
+    const snap = getCandidateSnapshot(selectedRunId)
+    if (!snap) return setMsg({ ok: false, text: '候选快照读取失败' })
+    const cap = Number(capital)
+    if (!cap || cap <= 0) return setMsg({ ok: false, text: '请输入有效的初始资金' })
+    const prices = new Map(universe.map((s) => [s.code, s.price]))
+    try {
+      const pf = createPaperPortfolioFromCandidate(
+        snap.runId,
+        snap.id,
+        pfName.trim() || `候选组合 ${snap.asOfDate}`,
+        cap,
+        prices,
+      )
+      setMsg({ ok: true, text: `已创建「${pf.name}」：${pf.positions.length} 只持仓，总资产 ¥${fmtNum(pf.totalValue, 0)}` })
+      setPfName('')
+    } catch (e) {
+      setMsg({ ok: false, text: e instanceof Error ? e.message : '创建失败' })
+    }
+  }
+
+  const handleDelete = (id: string) => {
+    if (confirm('确认删除该模拟组合？')) deletePortfolio(id)
+  }
+
+  return (
+    <div className="rounded-xl border border-gray-200 bg-white p-4">
+      <h3 className="mb-3 flex items-center gap-2 text-sm font-semibold text-gray-900">
+        <FolderPlus className="h-4 w-4 text-amber-500" />模拟组合（V2 · 独立于下方模拟账户）
+      </h3>
+      <div className="flex flex-wrap items-end gap-2">
+        <div className="min-w-56 flex-1">
+          <label className="mb-1 block text-[11px] text-gray-400">候选快照（已筛选的 Run）</label>
+          <select
+            value={selectedRunId}
+            onChange={(e) => setSelectedRunId(e.target.value)}
+            className="w-full rounded border border-gray-300 bg-gray-50 px-2 py-1.5 text-xs text-gray-800"
+          >
+            {runOptions.length === 0 && <option value="">暂无候选快照</option>}
+            {runOptions.map((o) => (
+              <option key={o.runId} value={o.runId}>{o.label}</option>
+            ))}
+          </select>
+        </div>
+        <div className="w-40">
+          <label className="mb-1 block text-[11px] text-gray-400">组合名称</label>
+          <Input className="h-7 text-xs" placeholder="如 等权组合" value={pfName} onChange={(e) => setPfName(e.target.value)} />
+        </div>
+        <div className="w-32">
+          <label className="mb-1 block text-[11px] text-gray-400">初始资金</label>
+          <Input className="h-7 font-mono text-xs" type="number" min={1} value={capital} onChange={(e) => setCapital(e.target.value)} />
+        </div>
+        <Button size="sm" onClick={handleCreate} className="h-7 text-xs">从候选快照创建</Button>
+      </div>
+      {msg && (
+        <div className={`mt-2 rounded p-2 text-xs ${msg.ok ? 'bg-emerald-50 text-emerald-700' : 'bg-rose-50 text-rose-700'}`}>
+          {msg.text}
+        </div>
+      )}
+      {portfolios.length > 0 && (
+        <div className="mt-3 space-y-2">
+          {portfolios.map((pf) => (
+            <div key={pf.id} className="flex flex-wrap items-center justify-between gap-2 rounded border border-gray-200 px-3 py-2">
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="text-sm font-medium text-gray-900">{pf.name}</span>
+                  <span className="font-mono text-[10px] text-gray-400">{pf.asOfDate}</span>
+                  <Badge variant="outline" className="border-amber-300 bg-amber-50 text-[10px] text-amber-600">
+                    {pf.positions.length} 只持仓
+                  </Badge>
+                </div>
+                <div className="mt-0.5 text-[11px] text-gray-400">
+                  总资产 <span className="font-mono text-gray-600">¥{fmtNum(pf.totalValue, 0)}</span>
+                  · 现金 <span className="font-mono text-gray-600">¥{fmtNum(pf.cash, 0)}</span>
+                  · 已实现盈亏{' '}
+                  <span className={`font-mono ${pf.realizedPnL >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
+                    {pf.realizedPnL >= 0 ? '+' : ''}{fmtNum(pf.realizedPnL, 0)}
+                  </span>
+                </div>
+              </div>
+              <Button size="sm" variant="ghost" onClick={() => handleDelete(pf.id)} className="text-gray-400 hover:text-rose-500">
+                <Trash2 className="h-3.5 w-3.5" />
+              </Button>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ═══════════════════════════════════════════════════════════════
 // 主页面
 // ═══════════════════════════════════════════════════════════════
 
@@ -366,6 +485,10 @@ export default function SimTradePage() {
     if (universeState.data) {
       const prices = new Map(universeState.data.map((s) => [s.code, s.price]))
       setAccount(markToMarket(acct, prices))
+      // 同步刷新 V2 模拟组合市价
+      for (const pf of listPortfolios()) {
+        try { markPortfolioToMarket(pf.id, prices) } catch { /* 单个组合失败不影响其余 */ }
+      }
     } else {
       setAccount(acct)
     }
@@ -388,12 +511,15 @@ export default function SimTradePage() {
         <div className="flex items-center gap-3">
           <Wallet className="h-5 w-5 text-amber-500" />
           <div>
-            <h1 className="text-lg font-semibold text-gray-900">模拟交易</h1>
+            <h1 className="text-lg font-semibold text-gray-900">模拟交易（独立引擎）</h1>
             <p className="text-xs text-gray-400">完整版：T+1 · 涨跌停 · 万2.5佣金 · 万5印花税 · 滑点 · 初始资金 ¥1,000,000</p>
           </div>
         </div>
         <Button variant="outline" size="sm" onClick={handleReset} className="text-xs text-gray-400">重置账户</Button>
       </div>
+
+      {/* V2 模拟组合：从候选快照创建（独立引擎） */}
+      <PaperPortfolioPanel universe={universe} />
 
       {/* 账户摘要 */}
       <AccountSummary account={account} />

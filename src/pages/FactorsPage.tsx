@@ -2,6 +2,7 @@
 // P3 因子实验室 v3 — 紧凑摘要卡片 + 详情抽屉 + 双视图
 // ─────────────────────────────────────────────────────────────
 import { useMemo, useState } from 'react'
+import { useSearchParams } from 'react-router'
 import {
   Check,
   LayoutGrid,
@@ -12,11 +13,17 @@ import {
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
-import { Tooltip } from '@/components/ui/tooltip'
 import { cn } from '@/lib/utils'
 import { getDB, updateDB } from '@/lib/store'
-import type { Factor } from '@/lib/types'
-import type { FactorResearch, FactorResearchResult } from '@/lib/marketData'
+import {
+  buildScreeningSpec,
+  getRun,
+  snapshotFactors,
+  snapshotStrategies,
+  updateRunConfiguration,
+} from '@/lib/experimentRun'
+import type { ExperimentRun, Factor } from '@/lib/types'
+import type { FactorResearch } from '@/lib/marketData'
 import { loadFactorResearch } from '@/lib/marketData'
 import { useAsync } from '@/lib/useAsync'
 import { FactorDiagnostics, LazyLoader, FactorExpressionEditor, DiscoveredFactors } from '@/components/LazyComponents'
@@ -96,14 +103,12 @@ function DetailDrawer({
   factor,
   isSelected,
   research,
-  selectedFactors,
   onClose,
   onToggle,
 }: {
   factor: Factor | null
   isSelected: boolean
   research: FactorResearch | null
-  selectedFactors: Factor[]
   onClose: () => void
   onToggle: () => void
 }) {
@@ -179,12 +184,12 @@ function DetailDrawer({
             <section className="rounded-lg bg-gray-50 p-3">
               <h4 className="text-xs font-semibold text-gray-700 mb-2">本系统实测</h4>
               <div className="grid grid-cols-3 gap-2 text-xs">
-                <div><span className="text-gray-400">IC20</span><br /><span className="font-mono font-semibold">{evalData.ic20?.toFixed(4) ?? '–'}</span></div>
-                <div><span className="text-gray-400">IR</span><br /><span className="font-mono font-semibold">{evalData.icir20?.toFixed(2) ?? '–'}</span></div>
-                <div><span className="text-gray-400">胜率</span><br /><span className="font-mono font-semibold">{evalData.posRatio ? (evalData.posRatio * 100).toFixed(0) + '%' : '–'}</span></div>
+                <div><span className="text-gray-400">IC20</span><br /><span className="font-mono font-semibold">{evalData.ic20?.mean?.toFixed(4) ?? '–'}</span></div>
+                <div><span className="text-gray-400">IR</span><br /><span className="font-mono font-semibold">{evalData.dicir20?.toFixed(2) ?? '–'}</span></div>
+                <div><span className="text-gray-400">胜率</span><br /><span className="font-mono font-semibold">{evalData.ic20?.posRatio ? (evalData.ic20.posRatio * 100).toFixed(0) + '%' : '–'}</span></div>
                 <div><span className="text-gray-400">多空利差</span><br /><span className="font-mono font-semibold">{evalData.spread20 ? (evalData.spread20 * 100).toFixed(1) + '%' : '–'}</span></div>
                 <div><span className="text-gray-400">方向</span><br /><span className="font-mono">{evalData.dir ?? '–'}</span></div>
-                <div><span className="text-gray-400">t值</span><br /><span className="font-mono">{evalData.tstat?.toFixed(1) ?? '–'}</span></div>
+                <div><span className="text-gray-400">t值</span><br /><span className="font-mono">{evalData.ic20?.tstat?.toFixed(1) ?? '–'}</span></div>
               </div>
             </section>
           )}
@@ -244,9 +249,11 @@ function SelectedTray({
 // 主页面
 // ═══════════════════════════════════════════════════════════════
 export default function FactorsPage() {
+  const [searchParams] = useSearchParams()
+  const runId = searchParams.get('runId')
   const [pool, setPool] = useState<string[]>(() => getDB().factorPool)
+  const [run, setRun] = useState<ExperimentRun | null>(() => (runId ? getRun(runId) : null))
   const [search, setSearch] = useState('')
-  const [sortBy, setSortBy] = useState<'name' | 'ic'>('ic')
   const [viewMode, setViewMode] = useState<'cards' | 'table'>('cards')
   const [activeTab, setActiveTab] = useState<'library' | 'mining' | 'diagnostics'>('library')
   const [detailFactor, setDetailFactor] = useState<Factor | null>(null)
@@ -283,10 +290,43 @@ export default function FactorsPage() {
       else d.factorPool.push(id)
     })
     setPool(getDB().factorPool)
+    syncRunConfig()
+  }
+
+  /**
+   * V2：Run 处于 draft 时，因子池变化 → 重新固化快照（updateRunConfiguration 深拷贝）。
+   * ready 以后配置冻结（服务强制），静默跳过 —— 修改配置必须新建 Run（规则2）。
+   */
+  const syncRunConfig = () => {
+    if (!runId) return
+    const current = getRun(runId)
+    if (!current || current.status !== 'draft') return
+    const db = getDB()
+    const enabled = db.strategies.filter((s) => s.enabled)
+    const poolFactors = db.factors.filter((f) => db.factorPool.includes(f.id))
+    try {
+      const updated = updateRunConfiguration(
+        runId,
+        buildScreeningSpec(current.asOfDate, enabled, poolFactors),
+        snapshotStrategies(enabled),
+        snapshotFactors(poolFactors),
+        { mode: 'score', description: current.originalQuery.raw || '综合打分' },
+      )
+      setRun(updated)
+    } catch {
+      // 防御：配置已冻结/Run 不存在时不影响页面 legacy 操作
+    }
   }
 
   return (
     <div className="flex flex-col gap-4 min-w-0">
+      {run && (
+        <p className="inline-flex flex-wrap items-center gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-1.5 text-xs text-amber-700">
+          V2 Run #{run.id.slice(-6)} · {run.status}
+          <span className="text-amber-500">「{run.originalQuery.raw}」</span>
+          {run.status === 'draft' ? '· 因子池变化将同步固化到 Run 快照' : '· 配置已冻结（ready 后修改需新建 Run）'}
+        </p>
+      )}
       {/* 已选托盘 */}
       <SelectedTray
         selected={selectedFactors}
@@ -417,7 +457,6 @@ export default function FactorsPage() {
         factor={detailFactor}
         isSelected={detailFactor ? pool.includes(detailFactor.id) : false}
         research={researchState.data ?? null}
-        selectedFactors={selectedFactors}
         onClose={() => setDetailFactor(null)}
         onToggle={() => detailFactor && toggle(detailFactor.id)}
       />

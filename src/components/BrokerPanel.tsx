@@ -1,5 +1,5 @@
 // ─────────────────────────────────────────────────────────────
-// 券商连接面板 — 管理 API 连接 + 同步持仓
+// 数据源面板 — 管理 API 连接（Tushare/AkShare 为数据源，非券商）+ 同步持仓
 // ─────────────────────────────────────────────────────────────
 import { useState, useEffect, useCallback } from 'react'
 import { Database, Link2, RefreshCw, Settings, Upload, Check, AlertTriangle } from 'lucide-react'
@@ -7,7 +7,7 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { getBrokerStatus, syncBrokerAccount, saveBrokerConfig, importBrokerToHoldings } from '@/lib/brokerClient'
-import type { BrokerConfig, BrokerAccount } from '@/lib/brokerClient'
+import type { BrokerConfig } from '@/lib/brokerClient'
 
 export default function BrokerPanel() {
   const [brokers, setBrokers] = useState<BrokerConfig[]>([])
@@ -56,7 +56,7 @@ export default function BrokerPanel() {
     <div className="rounded-lg border border-gray-200 bg-white p-4">
       <div className="mb-3 flex items-center justify-between">
         <h3 className="flex items-center gap-2 text-sm font-semibold text-gray-900">
-          <Link2 className="h-4 w-4 text-amber-500" />券商连接
+          <Link2 className="h-4 w-4 text-amber-500" />数据源（Tushare/AkShare）
         </h3>
         <Button onClick={() => setShowConfig(!showConfig)} variant="outline" size="sm" className="text-xs">
           <Settings className="h-3 w-3 mr-1" />
@@ -83,7 +83,7 @@ export default function BrokerPanel() {
       <div className="space-y-2">
         {brokers.length === 0 ? (
           <div className="rounded border border-dashed border-gray-200 py-4 text-center text-xs text-gray-400">
-            点击「配置」添加券商连接
+            点击「配置」添加数据源连接
           </div>
         ) : (
           brokers.map((b) => (

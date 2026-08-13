@@ -3,7 +3,7 @@
 // 展示入选原因（策略条件 × 因子命中）与个股近 60 日行情
 // ─────────────────────────────────────────────────────────────
 import { useEffect, useMemo, useState } from 'react'
-import { Link } from 'react-router'
+import { Link, useNavigate, useSearchParams } from 'react-router'
 import {
   Area,
   AreaChart,
@@ -24,10 +24,10 @@ import { fmtNum, fmtPct, pctBg, pctColor } from '@/lib/format'
 import { loadKline, loadUniverse, universeToStock } from '@/lib/marketData'
 import type { Stock } from '@/lib/mockData'
 import { useAsync } from '@/lib/useAsync'
-import { useAutoRefresh } from '@/lib/autoRefresh'
 import { getDB, subscribeDB, updateDB } from '@/lib/store'
 import type { DB } from '@/lib/store'
-import type { WatchItem, WatchList } from '@/lib/types'
+import { getCandidateSnapshot, getRun } from '@/lib/experimentRun'
+import type { CandidateSnapshot, ExperimentRun, WatchItem, WatchList } from '@/lib/types'
 
 const TOOLTIP_STYLE = {
   backgroundColor: '#0f172a',
@@ -214,7 +214,121 @@ function PageHeader() {
   )
 }
 
+const RUN_STATUS_LABEL: Record<string, string> = {
+  draft: '草稿', ready: '已就绪', running_screen: '筛选中', screened: '已筛选',
+  running_backtest: '回测中', completed: '已完成', failed: '失败',
+}
+
+/**
+ * V2：携带 runId 时展示 Run 状态 + 独立 CandidateSnapshot。
+ * 候选不依赖 watchlist 存在（规则5）：即使尚未保存为备选清单也能查看，
+ * 并提供「下一步：回测」入口。
+ */
+function RunSnapshotSection({ runId, stockMap }: { runId: string; stockMap: Map<string, Stock> }) {
+  const navigate = useNavigate()
+  const [, setVersion] = useState(0)
+  const [run, setRun] = useState<ExperimentRun | null>(() => getRun(runId))
+  const [snapshot, setSnapshot] = useState<CandidateSnapshot | null>(() => getCandidateSnapshot(runId))
+
+  useEffect(
+    () =>
+      subscribeDB(() => {
+        setVersion((v) => v + 1)
+        setRun(getRun(runId))
+        setSnapshot(getCandidateSnapshot(runId))
+      }),
+    [runId],
+  )
+
+  if (!run) {
+    return (
+      <div className="rounded-xl border border-rose-500/30 bg-rose-500/5 p-4 text-sm text-rose-300">
+        Run 不存在（{runId}），请回到首页重新发起搜索。
+      </div>
+    )
+  }
+
+  const candidates: WatchItem[] = (snapshot?.candidates ?? []).map((c) => ({
+    code: c.stockCode,
+    name: c.stockName,
+    reasons: c.inclusionReasons ?? c.strategyMatches ?? [],
+  }))
+
+  return (
+    <div className="space-y-4">
+      {/* Run 状态头 */}
+      <div className="rounded-xl border border-amber-200 bg-amber-50/60 p-4">
+        <div className="flex flex-wrap items-center gap-3">
+          <div>
+            <div className="text-sm font-semibold text-gray-900">
+              V2 Run #{run.id.slice(-6)} · 「{run.originalQuery.raw}」
+            </div>
+            <div className="mt-0.5 text-xs text-gray-500">
+              asOfDate {run.asOfDate} · configHash{' '}
+              <span className="font-mono">{run.configHash ? run.configHash.slice(0, 12) : '—'}</span> ·
+              尝试 {run.attempt} 次
+            </div>
+          </div>
+          <Badge
+            variant="outline"
+            className={
+              run.status === 'failed'
+                ? 'border-rose-400 bg-rose-50 text-rose-600'
+                : run.status === 'completed'
+                  ? 'border-emerald-400 bg-emerald-50 text-emerald-600'
+                  : 'border-amber-400 bg-white text-amber-700'
+            }
+          >
+            {RUN_STATUS_LABEL[run.status] ?? run.status}
+          </Badge>
+          {snapshot && (
+            <Badge variant="outline" className="border-cyan-400 bg-white text-cyan-600">
+              候选快照 {snapshot.id.slice(-6)} · {snapshot.candidates.length} 只
+            </Badge>
+          )}
+          <Button
+            size="sm"
+            onClick={() => navigate(`/backtest?runId=${runId}`)}
+            disabled={!snapshot || run.status === 'running_screen'}
+            className="ml-auto shrink-0 bg-cyan-500 text-slate-950 hover:bg-cyan-400 disabled:opacity-50"
+          >
+            下一步：回测
+          </Button>
+        </div>
+        {run.status === 'failed' && run.failureReason && (
+          <p className="mt-2 text-xs text-rose-400">失败原因：{run.failureReason}</p>
+        )}
+        {run.status === 'draft' && (
+          <p className="mt-2 text-xs text-gray-500">Run 仍在草稿：请先到「策略池」/「因子实验室」完成快照，再在「组合工作台」生成候选。</p>
+        )}
+        {run.status === 'ready' && (
+          <p className="mt-2 text-xs text-gray-500">Run 已就绪：请前往「组合工作台」运行筛选生成候选。</p>
+        )}
+      </div>
+
+      {/* 候选快照（独立于 watchlist 存在） */}
+      {snapshot && (
+        <>
+          {candidates.length === 0 ? (
+            <div className="rounded-xl border border-dashed border-gray-300 bg-white py-10 text-center text-xs text-gray-400">
+              该 Run 的候选快照为空（未筛出股票）
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
+              {candidates.map((item) => (
+                <WatchItemCard key={item.code} item={item} stock={stockMap.get(item.code) ?? null} />
+              ))}
+            </div>
+          )}
+        </>
+      )}
+    </div>
+  )
+}
+
 export default function WatchlistPage() {
+  const [searchParams] = useSearchParams()
+  const runId = searchParams.get('runId')
   const [db, setDb] = useState<DB>(() => getDB())
   const [selectedId, setSelectedId] = useState<string>('')
   const universeState = useAsync(loadUniverse)
@@ -270,6 +384,9 @@ export default function WatchlistPage() {
     <div className="space-y-5 p-6">
       {/* 页头 */}
       <PageHeader />
+
+      {/* V2：Run 状态 + 独立候选快照（候选不依赖 watchlist 存在） */}
+      {runId && <RunSnapshotSection runId={runId} stockMap={stockMap} />}
 
       {lists.length === 0 ? (
         /* 空状态：引导去组合工作台 */

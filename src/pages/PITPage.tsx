@@ -1,14 +1,21 @@
 // ─────────────────────────────────────────────────────────────
-// V1.5 PIT 时间旅行
-// 选择历史日期，查看当时股票池快照（无前视偏差）
+// V1.5 PIT 时间旅行 → 全局 PIT 基准
+// 选择历史日期 → 设为全局 asOfDate（规则8：Run/筛选/回测/报告共用）
+// 规则9：PIT 能力不足的数据标记 approximate/unavailable，不得宣称无前视偏差
 // ─────────────────────────────────────────────────────────────
 import { useState, useMemo } from 'react'
-import { CalendarDays, Clock, Database, Download, Search } from 'lucide-react'
+import { CalendarDays, Clock, Database, Search } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { ErrorBlock, LoadingBlock } from '@/components/AsyncStatus'
-import { fmtNum, fmtPct, pctColor } from '@/lib/format'
+import { fmtPct } from '@/lib/format'
+import {
+  getPitContext,
+  getActiveSnapshot,
+  setActivePit,
+  registerDataSnapshot,
+} from '@/lib/dataSnapshotStore'
 
 interface PITSnapshot {
   code: string; name: string; industry: string; date: string
@@ -29,6 +36,11 @@ export default function PITPage() {
   const [error, setError] = useState('')
   const [result, setResult] = useState<PITResult | null>(null)
   const [search, setSearch] = useState('')
+  const [pitTick, setPitTick] = useState(0)
+
+  // 全局 PIT 基准（规则8：所有模块共用同一 asOfDate）
+  const pit = useMemo(() => getPitContext(), [pitTick])
+  const snap = useMemo(() => getActiveSnapshot(), [pitTick])
 
   const loadSnapshot = async () => {
     setLoading(true); setError('')
@@ -38,7 +50,20 @@ export default function PITPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ date }),
       })
-      const { taskId } = await taskRes.json()
+      // 防御：非 JSON 响应（如 dev 中间件未挂载时返回 HTML）给出可诊断错误
+      const taskBody = await taskRes.text()
+      let taskJson: { taskId?: string; status?: string; error?: string }
+      try {
+        taskJson = JSON.parse(taskBody)
+      } catch {
+        throw new Error(
+          `PIT 接口返回异常（HTTP ${taskRes.status}）：请确认 Vite 中间件已挂载（dev server），非 HTML 响应`,
+        )
+      }
+      if (!taskJson.taskId) {
+        throw new Error(taskJson.error ?? 'PIT 任务创建失败：无 taskId')
+      }
+      const { taskId } = taskJson
 
       // 轮询结果
       let attempts = 0
@@ -47,9 +72,39 @@ export default function PITPage() {
         const res = await fetch(`/api/tasks/${taskId}`)
         const task = await res.json()
         if (task.status === 'completed') {
-          const dataRes = await fetch(`/data/pit-${date}.json`)
-          if (dataRes.ok) setResult(await dataRes.json())
-          else setResult({ targetDate: date, totalStocks: 0, snapshots: [] })
+          // 规则：结果经后端 API 读取（.runtime/pit/ 优先，兼容旧 public/data/），
+          // 不再直接 fetch /data/pit-${date}.json（运行时产物不入 Git）
+          const dataRes = await fetch(`/api/pit/result?date=${encodeURIComponent(date)}`)
+          if (dataRes.ok) {
+            const data = (await dataRes.json()) as PITResult
+            setResult(data)
+            // 注册真实 PIT 快照（数据来自后端按 ≤date 口径重建，非伪造）
+            const loaded = (data.snapshots?.length ?? 0) > 0
+            const snapReg = registerDataSnapshot({
+              batchId: date,
+              asOfDate: date,
+              dataDate: date, // 后端仅用 ≤ 该日数据重建，PIT 口径
+              publishDate: date,
+              source: 'tushare',
+              stockCount: data.totalStocks ?? 0,
+              klineDays: 0,
+              qualityChecks: [
+                {
+                  name: 'pit_snapshot_load',
+                  passed: loaded,
+                  detail: `重建 ${data.snapshots?.length ?? 0} 只股票截面`,
+                },
+              ],
+              failureCount: loaded ? 0 : 1,
+              syncStatus: loaded ? 'synced' : 'failed',
+              snapshotId: `pit-${date}`,
+            })
+            // 规则8：设为全局 PIT 基准
+            setActivePit(date, snapReg.id)
+            setPitTick((t) => t + 1)
+          } else {
+            setResult({ targetDate: date, totalStocks: 0, snapshots: [] })
+          }
           setLoading(false)
           return
         }
@@ -94,6 +149,35 @@ export default function PITPage() {
         <span className="text-[10px] text-gray-400">
           PIT 口径：仅用 ≤ 选定日期的数据，无前视偏差
         </span>
+      </div>
+
+      {/* 全局 PIT 基准（规则8/9） */}
+      <div className={`flex flex-wrap items-center gap-2 rounded-lg border px-3 py-2 text-xs ${pit.active ? 'border-cyan-200 bg-cyan-50' : 'border-gray-200 bg-gray-50'}`}>
+        <Database className={`h-3.5 w-3.5 ${pit.active ? 'text-cyan-500' : 'text-gray-300'}`} />
+        <span className="font-medium text-gray-700">全局 PIT 基准：{pit.asOfDate ?? '未设置（实时数据）'}</span>
+        {pit.active ? (
+          pit.pitCapable ? (
+            <Badge variant="outline" className="border-emerald-300 bg-emerald-50 text-emerald-600">PIT 可用（无前视）</Badge>
+          ) : (
+            <Badge variant="outline" className="border-amber-300 bg-amber-50 text-amber-600">近似数据 (approximate)</Badge>
+          )
+        ) : (
+          <Badge variant="outline" className="border-gray-300 bg-gray-100 text-gray-500">未启用</Badge>
+        )}
+        <span className="text-[10px] text-gray-400">该日期将影响 Run / 筛选 / 回测 / 报告的全局数据基准</span>
+        {snap && (
+          <span className="text-[10px] text-gray-400">
+            快照 {snap.id} · {snap.source} · {snap.syncStatus} · 覆盖 {snap.stockCount} 只 · 失败 {snap.failureCount}
+          </span>
+        )}
+        {pit.active && (
+          <button
+            onClick={() => { setActivePit(null, null); setPitTick((t) => t + 1) }}
+            className="ml-auto text-[11px] text-rose-500 hover:underline"
+          >
+            退出 PIT 模式
+          </button>
+        )}
       </div>
 
       {result && (

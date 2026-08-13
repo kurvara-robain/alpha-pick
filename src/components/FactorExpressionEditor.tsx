@@ -3,7 +3,7 @@
 // 输入公式 → API 计算 IC → 结果显示
 // ─────────────────────────────────────────────────────────────
 import { useState } from 'react'
-import { FlaskConical, Play, Sparkles, Lightbulb, Copy, Check } from 'lucide-react'
+import { FlaskConical, Play } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
@@ -46,7 +46,6 @@ export default function FactorExpressionEditor() {
   const [loading, setLoading] = useState(false)
   const [result, setResult] = useState<EvalResult | null>(null)
   const [error, setError] = useState('')
-  const [copied, setCopied] = useState(false)
 
   const handleEval = async () => {
     if (!expr.trim()) return

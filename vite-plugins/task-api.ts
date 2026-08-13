@@ -361,8 +361,48 @@ export function taskApi(): Plugin {
           return
         }
 
+        // ── GET /api/pit/result?date=YYYY-MM-DD ──
+        // 读取 PIT 截面生成结果：优先 .runtime/pit/（运行时产物，不入 Git），
+        // 兼容读取旧 public/data/pit-<date>.json（只读，不再写入）。
+        if (url === '/api/pit/result' && req.method === 'GET') {
+          const rawUrl = req.url ?? ''
+          const qIdx = rawUrl.indexOf('?')
+          const query = qIdx >= 0 ? rawUrl.slice(qIdx + 1) : ''
+          const params = new URLSearchParams(query)
+          const date = params.get('date') ?? ''
+          if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+            json(res, 400, { error: '无效日期' })
+            return
+          }
+          const runtimePath = path.resolve('.runtime/pit', `pit-${date}.json`)
+          const legacyPath = path.resolve('public/data', `pit-${date}.json`)
+          const candidates = [runtimePath, legacyPath]
+          let found = ''
+          for (const p of candidates) {
+            if (fs.existsSync(p)) { found = p; break }
+          }
+          if (!found) {
+            json(res, 404, { error: `PIT 截面不存在: ${date}`, checked: candidates })
+            return
+          }
+          try {
+            const data = JSON.parse(fs.readFileSync(found, 'utf8'))
+            json(res, 200, { ...data, _source: path.relative(process.cwd(), found) })
+          } catch (e) {
+            json(res, 500, { error: `PIT 截面解析失败: ${e instanceof Error ? e.message : String(e)}` })
+          }
+          return
+        }
+
         // ── POST /api/tasks/pit-snapshot ──
         if (url === '/api/tasks/pit-snapshot' && req.method === 'POST') {
+          const body = await readBody(req).catch(() => '{}')
+          let date = '2025-06-30'
+          try {
+            const parsed = JSON.parse(body || '{}') as { date?: string }
+            if (parsed.date && /^\d{4}-\d{2}-\d{2}$/.test(parsed.date)) date = parsed.date
+          } catch { /* 保持默认日期 */ }
+
           const id = uid()
           const task: Task = {
             id, type: 'pit_snapshot', status: 'pending', progress: 0,
@@ -370,8 +410,11 @@ export function taskApi(): Plugin {
           }
           saveTask(task)
 
-          const scriptPath = path.resolve('scripts/pit_backfill.py')
-          runPythonScript(scriptPath, ['--task-id', id], task)
+          // 正确脚本：pit_snapshot.py 按 ≤date 口径重建截面并输出到 .runtime/pit/（不入 Git）
+          const scriptPath = path.resolve('scripts/pit_snapshot.py')
+          const outDir = path.resolve('.runtime/pit')
+          fs.mkdirSync(outDir, { recursive: true })
+          runPythonScript(scriptPath, ['--date', date, '--output', `pit-${date}.json`, '--out-dir', outDir], task)
 
           json(res, 202, { taskId: id, status: 'pending' })
           return

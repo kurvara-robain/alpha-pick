@@ -172,7 +172,7 @@ export function buildDSLFromNL(
 ): StrategyDSL {
   const filters = conditionsToFilters(conditions)
 
-  const signals: SignalSpec[] = factorIds.map((id, i) => ({
+  const signals: SignalSpec[] = factorIds.map((id) => ({
     factor: id,
     direction: 'ascending' as const,
     weight: 1 / factorIds.length,

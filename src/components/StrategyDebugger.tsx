@@ -3,16 +3,15 @@
 // 对指定股票和日期，逐条显示每个条件的通过/失败状态
 // ─────────────────────────────────────────────────────────────
 import { useMemo, useState } from 'react'
-import { CheckCircle2, ChevronDown, ChevronUp, Search, XCircle, Bug } from 'lucide-react'
+import { CheckCircle2, Search, XCircle, Bug } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { loadUniverse } from '@/lib/marketData'
 import type { UniverseStock } from '@/lib/marketData'
 import { useAsync } from '@/lib/useAsync'
-import { fmtNum, fmtPct, pctColor } from '@/lib/format'
 import { getDB } from '@/lib/store'
-import type { Strategy, StrategyCondition } from '@/lib/types'
+import type { StrategyCondition } from '@/lib/types'
 
 interface ConditionResult {
   condition: StrategyCondition

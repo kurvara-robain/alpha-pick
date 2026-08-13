@@ -6,14 +6,23 @@ import { loadIndices, loadKline, loadMeta, loadUniverse } from './marketData'
 import type { UniverseStock } from './marketData'
 import { runChanAnalysis } from './chan'
 import { getDB, uid } from './store'
+import {
+  buildScreeningSpec,
+  getRun,
+  snapshotFactors,
+  snapshotStrategies,
+  updateRunConfiguration,
+} from './experimentRun'
 import type {
   BacktestConfig,
   BacktestResult,
+  CandidateStock,
   ChanAnalysis,
   DailyReport,
   DiagnosisAdvice,
   Factor,
   HoldingDiagnosis,
+  Strategy,
   StrategyCondition,
   WatchItem,
 } from './types'
@@ -95,6 +104,23 @@ const RULES: Rule[] = [
     re: /AI\s*评分\s*(大于|超过|高于|>)\s*(\d+)/,
     build: (m) => ({ field: 'aiScore', op: '>', value: Number(m[2]), raw: m[0] }),
   },
+  // ── V2 语义规则（NL→可执行配置，规则3：低估值/高ROE/盈利稳定/高增长）──
+  {
+    re: /(低估值|低估|便宜|价值型)/,
+    build: (m) => ({ field: 'pe', op: '<', value: 20, raw: `${m[0]}（PE<20）` }),
+  },
+  {
+    re: /(高ROE|高roe|ROE高|roe高|盈利能力强|高盈利)/,
+    build: (m) => ({ field: 'roe', op: '>', value: 15, raw: `${m[0]}（ROE>15%）` }),
+  },
+  {
+    re: /(盈利稳定|盈利质量|ROE稳定|roe稳定|持续盈利)/,
+    build: (m) => ({ field: 'roe', op: '>', value: 10, raw: `${m[0]}（ROE>10%）` }),
+  },
+  {
+    re: /(高增长|业绩增长|营收增长|利润增长|高成长)/,
+    build: (m) => ({ field: 'mom_rank', op: 'top_pct', value: 30, window: 20, raw: `${m[0]}（近20日涨幅前30%）` }),
+  },
 ]
 
 export async function parseStrategyNL(text: string): Promise<ParseResult> {
@@ -118,6 +144,55 @@ export async function parseStrategyNL(text: string): Promise<ParseResult> {
       ? '未识别出可用的结构化条件'
       : `识别出 ${conditions.length} 条条件` + (unsupported.length ? `，${unsupported.length} 条暂不支持` : '')
   return { conditions, unsupported, summary }
+}
+
+/**
+ * V2 规则3：NL 语义 → Run 可执行配置。
+ * 首页创建 Draft Run 后立即调用：解析查询 → 构建临时策略（conditions）+
+ * 匹配因子快照 → updateRunConfiguration 固化。使 Run 从创建起就携带
+ * 可执行语义（策略 1/N、因子 1/N），而不是 0/0 空配置。
+ * 若解析不出任何条件则保持 draft 空配置（用户可后续手动配置）。
+ */
+export async function seedRunFromNL(runId: string, query: string, asOfDate: string): Promise<boolean> {
+  const { conditions, unsupported } = await parseStrategyNL(query)
+  if (conditions.length === 0) return false
+
+  const db = getDB()
+  // 临时策略：NL 解析出的条件即策略条件（kind: 'temp'，source: 'nl'）
+  const nlStrategy: Strategy = {
+    id: uid(),
+    name: '自然语言策略',
+    description: query.slice(0, 60),
+    kind: 'temp',
+    enabled: true,
+    conditions,
+    unsupported,
+    source: 'nl',
+    createdAt: new Date().toISOString(),
+  }
+  // 匹配因子：优先 NL 语义（ROE/盈利 → f-roe；低估值/价值 → HML），否则默认池
+  const q = query
+  const wantIds: string[] = []
+  if (/(高ROE|高roe|ROE高|roe高|盈利)/.test(q)) wantIds.push('f-roe')
+  if (/(低估值|低估|价值)/.test(q)) wantIds.push('f-ff-hml')
+  if (/(动量|趋势|强势|高增长|成长)/.test(q)) wantIds.push('f-jq-roc')
+  const factorPool = wantIds.length > 0 ? wantIds : db.factorPool
+  const factors = db.factors.filter((f) => factorPool.includes(f.id))
+
+  try {
+    const current = getRun(runId)
+    if (!current || current.status !== 'draft') return false
+    updateRunConfiguration(
+      runId,
+      buildScreeningSpec(asOfDate, [nlStrategy], factors),
+      snapshotStrategies([nlStrategy]),
+      snapshotFactors(factors),
+      { mode: 'score', description: query },
+    )
+    return true
+  } catch {
+    return false
+  }
 }
 
 // ── 策略 × 因子 → 备选清单（模拟筛选引擎）─────────────────────
@@ -195,6 +270,8 @@ function matchCondition(s: UniverseStock, c: StrategyCondition, ctx: ScreenCtx):
     case 'pe':
       if (range) return s.pe > range[0] && s.pe < range[1]
       return s.pe > 0 && (c.op === '<' ? s.pe < Number(c.value) : s.pe > Number(c.value))
+    case 'roe':
+      return s.roe !== null && s.roe !== undefined && (c.op === '<' ? s.roe < Number(c.value) : s.roe > Number(c.value))
     case 'pb':
       return c.op === '<' ? s.pb < Number(c.value) : s.pb > Number(c.value)
     case 'mktCap':
@@ -236,16 +313,29 @@ function matchCondition(s: UniverseStock, c: StrategyCondition, ctx: ScreenCtx):
   }
 }
 
-export async function runScreening(strategyIds: string[], factorIds: string[]): Promise<WatchItem[]> {
-  await delay(900)
-  const db = getDB()
-  const strategies = db.strategies.filter((s) => strategyIds.includes(s.id) && s.enabled)
-  const factors = db.factors.filter((f) => factorIds.includes(f.id))
+/**
+ * 筛选命中记录（V2 溯源扩展）：除 WatchItem 字段外携带命中的策略 ID 与
+ * 因子实际字段值（供 CandidateSnapshot 溯源，不伪造得分）。
+ */
+export interface ScreenHit {
+  code: string
+  name: string
+  reasons: string[]
+  strategyIds: string[]
+  factorScores: Record<string, number>
+}
+
+/**
+ * 筛选引擎核心：策略/因子对象由调用方提供（V2 从 Run 快照还原，legacy 从 db 读取），
+ * 引擎本身不读 db —— 保证「配置来源可追溯、db 后续变更不影响已冻结 Run」。
+ */
+export async function screeningCore(strategies: Strategy[], factors: Factor[]): Promise<ScreenHit[]> {
   const universe = await loadUniverse()
   const ctx: ScreenCtx = { universe, rankMaps: new Map(), ruleRankMaps: new Map() }
-  const items: WatchItem[] = []
+  const items: ScreenHit[] = []
   for (const s of universe) {
     const hitBy: string[] = []
+    const hitStrategyIds: string[] = []
     let allPass = strategies.length > 0
     for (const st of strategies) {
       if (st.conditions.some((c) => !matchCondition(s, c, ctx))) {
@@ -256,11 +346,13 @@ export async function runScreening(strategyIds: string[], factorIds: string[]): 
         if (c.field === '__sort') continue // 排序指令不写进入选原因
         hitBy.push(`策略「${st.name}」：${c.raw}`)
       }
+      hitStrategyIds.push(st.id)
     }
     if (!allPass) continue
     // 带 rule 的因子是真正的过滤条件（AND 语义）：股票必须落在该因子
     // 字段的全市场截面最优 topPct% 内；字段为 null/undefined 视为不满足
     let rulePass = true
+    const factorScores: Record<string, number> = {}
     for (const f of factors) {
       if (!f.rule) continue
       if (!ruleSetFor(ctx, f.rule).has(s.code)) {
@@ -271,6 +363,7 @@ export async function runScreening(strategyIds: string[], factorIds: string[]): 
       hitBy.push(
         `因子「${f.name}」：${f.rule.field}=${v === null ? '-' : Number(v.toFixed(2))}（截面前${f.rule.topPct}%）`,
       )
+      if (v !== null) factorScores[f.id] = v
     }
     if (!rulePass) continue
     // 因子贡献：动量/低波等作为加分项写进入选原因（无 rule 的旧因子保持原行为）
@@ -285,7 +378,9 @@ export async function runScreening(strategyIds: string[], factorIds: string[]): 
       if (f.category === '情绪' && s.changePct > 2) hitBy.push(`因子「${f.name}」：当日情绪强`)
       if (f.category === '规模' && s.mktCap < 500) hitBy.push(`因子「${f.name}」：中小市值`)
     }
-    if (hitBy.length > 0) items.push({ code: s.code, name: s.name, reasons: hitBy.slice(0, 4) })
+    if (hitBy.length > 0) {
+      items.push({ code: s.code, name: s.name, reasons: hitBy.slice(0, 4), strategyIds: hitStrategyIds, factorScores })
+    }
   }
   // 排序指令：按换手率降序（以当日换手率快照为口径）
   const sortByTurnover = strategies.some((st) =>
@@ -296,6 +391,37 @@ export async function runScreening(strategyIds: string[], factorIds: string[]): 
     return items.sort((a, b) => (turnoverOf.get(b.code) ?? 0) - (turnoverOf.get(a.code) ?? 0))
   }
   return items.sort((a, b) => b.reasons.length - a.reasons.length)
+}
+
+/** legacy 路径：策略/因子 ID → db 读取 → WatchItem 列表（行为不变） */
+export async function runScreening(strategyIds: string[], factorIds: string[]): Promise<WatchItem[]> {
+  await delay(900)
+  const db = getDB()
+  const strategies = db.strategies.filter((s) => strategyIds.includes(s.id) && s.enabled)
+  const factors = db.factors.filter((f) => factorIds.includes(f.id))
+  const hits = await screeningCore(strategies, factors)
+  return hits.map((h) => ({ code: h.code, name: h.name, reasons: h.reasons }))
+}
+
+/**
+ * V2 路径：策略/因子对象来自 Run 快照（禁止从 db 重新拼装），
+ * 产出 CandidateStock 列表（含命中策略 ID 与因子实际值溯源）。
+ */
+export async function runScreeningForRun(strategies: Strategy[], factors: Factor[]): Promise<CandidateStock[]> {
+  await delay(300)
+  const hits = await screeningCore(strategies, factors)
+  const marketDataTimestamp = new Date().toISOString()
+  return hits.map((h, i) => ({
+    stockCode: h.code,
+    stockName: h.name,
+    rank: i + 1,
+    included: true,
+    strategyMatches: h.strategyIds,
+    factorScores: h.factorScores,
+    compositeScore: h.reasons.length, // 命中原因数（真实统计量，非伪造得分）
+    inclusionReasons: h.reasons,
+    marketDataTimestamp,
+  }))
 }
 
 // ── 回测（真实引擎：前复权日K，等权组合，按调仓频率再平衡）──────
@@ -311,9 +437,27 @@ function toMap(rows: { date: string; close: number }[]): Map<string, number> {
 }
 
 export async function runBacktest(config: BacktestConfig): Promise<BacktestResult> {
-  // 1. 股票池：当前策略 × 因子组合的全市场筛选结果（前 25 只等权）
+  // legacy 路径：股票池来自 db 当前策略 × 因子组合（前 25 只等权）
   const items = await runScreening(config.strategyIds, config.factorIds)
-  const pool = items.slice(0, POOL_SIZE)
+  return runBacktestWithPool(config, items.slice(0, POOL_SIZE))
+}
+
+/**
+ * V2 路径：股票池/策略/因子全部来自 Run 快照还原的对象，引擎不读 db。
+ * 回测区间等执行参数由调用方（BacktestPage 从 Run 派生）传入。
+ */
+export async function runBacktestForRun(
+  config: BacktestConfig,
+  strategies: Strategy[],
+  factors: Factor[],
+): Promise<BacktestResult> {
+  const hits = await screeningCore(strategies, factors)
+  const pool = hits.slice(0, POOL_SIZE).map((h) => ({ code: h.code, name: h.name, reasons: h.reasons }))
+  return runBacktestWithPool(config, pool)
+}
+
+/** 回测引擎主体：给定股票池与执行配置，逐期滚动计算（两路径共用） */
+async function runBacktestWithPool(config: BacktestConfig, pool: WatchItem[]): Promise<BacktestResult> {
   if (pool.length === 0) throw new Error('当前策略组合在全市场未筛出股票，无法回测，请放宽条件')
 
   // 2. 加载真实 K 线与基准

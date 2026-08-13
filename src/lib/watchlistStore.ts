@@ -90,12 +90,6 @@ export function clearWatchlist(): void {
 // 行情快照 — 从 UniverseStock / K线计算
 // ═══════════════════════════════════════════════════════════════
 
-interface PriceSnapshot {
-  code: string
-  currentPrice: number
-  dailyChange: number // %
-}
-
 /**
  * 从市场全量数据中匹配自选股的当前价格
  * universe: loadUniverse() 返回的 UniverseStock[]

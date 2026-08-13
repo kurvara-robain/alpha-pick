@@ -12,12 +12,15 @@ import {
   NotebookPen,
   Sparkles,
   Wallet,
+  Database,
 } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { getDB, subscribeDB, updateDB } from '@/lib/store'
 import { generateReport } from '@/lib/api'
 import type { DailyReport } from '@/lib/types'
+import { getPitContext, getActiveSnapshot } from '@/lib/dataSnapshotStore'
+import { listProjects } from '@/lib/researchProjectStore'
 
 function useDB() {
   return useSyncExternalStore(subscribeDB, getDB)
@@ -190,6 +193,15 @@ export default function ReportsPage() {
   const current =
     (selectedId ? sorted.find((r) => r.id === selectedId) : undefined) ?? sorted[0] ?? null
 
+  // 规则20：报告绑定全局 PIT 基准 / 数据快照 / 研究项目
+  const pit = getPitContext()
+  const snap = getActiveSnapshot()
+  const linkedProjects = listProjects().filter(
+    (p) =>
+      (pit.asOfDate && p.asOfDate === pit.asOfDate) ||
+      (snap && p.dataSnapshotId === snap.id),
+  )
+
   const onGenerate = async () => {
     setNotice('')
     if (todayReport) {
@@ -236,6 +248,28 @@ export default function ReportsPage() {
           )}
           {loading ? '汇总各模块数据中…' : todayReport ? '查看今日研报' : '生成今日研报'}
         </Button>
+      </div>
+      {/* 数据基准与绑定（规则20） */}
+      <div className="flex flex-wrap items-center gap-2 rounded-lg border border-cyan-200 bg-cyan-50 px-3 py-2 text-xs">
+        <Database className="h-3.5 w-3.5 text-cyan-500" />
+        <span className="font-medium text-gray-700">数据基准：{pit.asOfDate ?? '实时（非 PIT）'}</span>
+        {pit.active && (
+          pit.pitCapable ? (
+            <Badge variant="outline" className="border-emerald-300 bg-emerald-50 text-emerald-600">PIT 可用</Badge>
+          ) : (
+            <Badge variant="outline" className="border-amber-300 bg-amber-50 text-amber-600">近似 (approximate)</Badge>
+          )
+        )}
+        <span>
+          快照：{snap ? `${snap.id} · ${snap.source} · ${snap.syncStatus} · 覆盖 ${snap.stockCount} 只 · 失败 ${snap.failureCount}` : '无'}
+        </span>
+        <span>绑定研究项目：{linkedProjects.length} 个</span>
+        {linkedProjects.length > 0 && (
+          <span className="text-[10px] text-gray-400">
+            {linkedProjects.slice(0, 3).map((p) => `${p.stockName}(${p.stockCode})`).join('、')}
+            {linkedProjects.length > 3 ? ' 等' : ''}
+          </span>
+        )}
       </div>
       {notice && (
         <div className="rounded-lg border border-cyan-500/30 bg-amber-100 px-4 py-2.5 text-sm text-amber-500">

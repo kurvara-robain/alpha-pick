@@ -2,7 +2,6 @@
 // P2 因子排行榜 + 相关性矩阵 — 替代卡片目录
 // ─────────────────────────────────────────────────────────────
 import { useMemo, useState } from 'react'
-import { TrendingUp, TrendingDown, Minus } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 interface FactorScore {

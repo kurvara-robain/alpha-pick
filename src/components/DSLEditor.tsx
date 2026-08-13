@@ -3,12 +3,11 @@
 // 拖拽式条件构建 + 实时预览 + YAML 导出
 // ─────────────────────────────────────────────────────────────
 import { useState } from 'react'
-import { Code, Copy, Eye, EyeOff, Plus, Trash2, Wand2 } from 'lucide-react'
+import { Code, Eye, EyeOff, Plus, Trash2, Wand2 } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import {
   buildDSLFromNL,
   serializeDSL,
@@ -160,7 +159,7 @@ export default function DSLEditor({
     const signalList: SignalSpec[] = signals
       .split(/[,，\s]+/)
       .filter(Boolean)
-      .map((id, i, arr) => ({ factor: id, direction: 'descending' as const, weight: 1 / arr.length }))
+      .map((id, _i, arr) => ({ factor: id, direction: 'descending' as const, weight: 1 / arr.length }))
 
     // 如果只有一个因子，权重 1
     if (signalList.length === 1) signalList[0].weight = 1

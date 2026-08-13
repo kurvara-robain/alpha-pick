@@ -1,19 +1,20 @@
 // V1.0 Investment Cockpit — minimal bootstrap
-import { useMemo, useState } from 'react'
+import { useState } from 'react'
 import { useNavigate } from 'react-router'
-import { BrainCircuit, ChevronRight, Database, Gauge, LayoutList, LineChart, Newspaper, Search, Shield, Sparkles, TrendingUp, Wallet, Bell } from 'lucide-react'
+import { BrainCircuit, Database, Gauge, LayoutList, LineChart, Newspaper, Shield, Sparkles, TrendingUp, Bell } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { ErrorBlock, LoadingBlock } from '@/components/AsyncStatus'
 import { loadIndices, loadMeta, loadUniverse } from '@/lib/marketData'
-import type { UniverseStock } from '@/lib/marketData'
 import { useAsync } from '@/lib/useAsync'
 import { fmtNum, fmtPct, pctColor } from '@/lib/format'
-import { getDB } from '@/lib/store'
+import { createDraftRun } from '@/lib/experimentRun'
+import { seedRunFromNL } from '@/lib/api'
+import { searchRoute, todayAsOfDate } from '@/lib/nlRouting'
 import { buildDataVersion } from '@/lib/versionMetadata'
-import Sparkline from '@/components/Sparkline'
+import { getPitContext, getActiveSnapshot } from '@/lib/dataSnapshotStore'
 import { getAlerts, checkSignalChanges, requestNotificationPermission, markAlertsRead } from '@/lib/alerts'
 import { useEffect } from 'react'
 
@@ -30,6 +31,7 @@ export default function HomePage() {
     requestNotificationPermission()
     const added = checkSignalChanges()
     if (added > 0) setAlerts(getAlerts())
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- 一次性初始化：检查信号变更后同步提醒状态
   }, [])
 
   const loading = indicesState.loading || metaState.loading || universeState.loading
@@ -38,17 +40,26 @@ export default function HomePage() {
   if (error) return <ErrorBlock error={error} onRetry={() => {}} />
 
   const indices = indicesState.data?.indices ?? []
-  const universe = universeState.data ?? []
   const dataVersion = metaState.data ? buildDataVersion(metaState.data) : null
+  // 规则8/10：全局 PIT 基准 + 活动数据快照（新鲜度/覆盖率/失败数/同步状态/来源/快照ID）
+  const pit = getPitContext()
+  const snap = getActiveSnapshot()
 
   const handleSearch = () => {
     if (!query.trim()) return
-    const lower = query.toLowerCase()
-    if (lower.includes('持仓')) navigate('/holdings')
-    else if (lower.includes('策略') || lower.includes('回测')) navigate('/strategies')
-    else if (lower.includes('因子')) navigate('/factors')
-    else if (lower.includes('板块')) navigate('/market')
-    else navigate('/research')
+    const route = searchRoute(query)
+    // 持仓/板块等非筛选类查询：原路由直达，不创建 Run（legacy 行为）
+    if (route === '/holdings' || route === '/market') {
+      navigate(route)
+      return
+    }
+    // V2 主链接线：NL → createDraftRun（搜索词完整落入 originalQuery）→ 携带 runId 跳转
+    // 规则8：优先使用活动 PIT 基准日期（pit.active && pit.asOfDate），否则今日
+    const asOfDate = pit.active && pit.asOfDate ? pit.asOfDate : todayAsOfDate()
+    const run = createDraftRun({ raw: query }, asOfDate)
+    // 规则3：NL 立即转成可执行配置（策略/因子快照），而非 0/0 空配置
+    void seedRunFromNL(run.id, query, run.asOfDate)
+    navigate(`${route}?runId=${run.id}`)
   }
 
   return (
@@ -126,25 +137,37 @@ export default function HomePage() {
         </div>
       </Card>
 
-      {/* 数据健康 */}
-      {dataVersion && (
+      {/* 数据健康（规则10：新鲜度/覆盖率/失败数/同步状态/来源/快照ID） */}
+      {(snap || dataVersion) && (
         <Card className="p-4">
           <div className="flex items-center justify-between">
             <h3 className="flex items-center gap-2 text-sm font-semibold text-gray-900"><Database className="h-4 w-4 text-amber-500" />数据健康</h3>
-            <Badge variant="outline" className={dataVersion.qualityGate.passed ? 'border-emerald-300 bg-emerald-50 text-emerald-700' : 'border-rose-300 bg-rose-50 text-rose-700'}>
-              {dataVersion.qualityGate.summary}
+            <Badge variant="outline" className={snap ? (snap.syncStatus === 'synced' ? 'border-emerald-300 bg-emerald-50 text-emerald-700' : 'border-rose-300 bg-rose-50 text-rose-700') : (dataVersion?.qualityGate.passed ? 'border-emerald-300 bg-emerald-50 text-emerald-700' : 'border-rose-300 bg-rose-50 text-rose-700')}>
+              {snap ? `同步 ${snap.syncStatus} · 失败 ${snap.failureCount}` : (dataVersion?.qualityGate.summary ?? '未知')}
             </Badge>
           </div>
           <div className="mt-2 grid grid-cols-4 gap-2 text-xs">
-            {['批次', '股票池', 'K线天数', '数据源'].map((label, i) => (
-              <div key={label} className="rounded bg-gray-50 p-2 text-center">
-                <div className="text-gray-400">{label}</div>
-                <div className="mt-0.5 font-mono font-semibold text-gray-800">
-                  {[dataVersion.batchId, dataVersion.stockCount.toLocaleString(), dataVersion.klineDays, dataVersion.source][i]}
-                </div>
+            {[
+              { label: '批次', value: snap?.batchId ?? dataVersion?.batchId ?? '—' },
+              { label: '快照ID', value: snap?.id ?? '无' },
+              { label: '覆盖', value: (snap?.stockCount ?? dataVersion?.stockCount ?? 0).toLocaleString('zh-CN') },
+              { label: 'K线天数', value: snap?.klineDays ?? dataVersion?.klineDays ?? '—' },
+              { label: '数据源', value: snap?.source ?? dataVersion?.source ?? '—' },
+              { label: '同步状态', value: snap?.syncStatus ?? (dataVersion?.qualityGate.passed ? 'synced' : 'unknown') },
+              { label: '失败数', value: snap?.failureCount ?? '—' },
+              { label: 'PIT 基准', value: pit.active ? (pit.asOfDate ?? '—') : '实时' },
+            ].map((m) => (
+              <div key={m.label} className="rounded bg-gray-50 p-2 text-center">
+                <div className="text-gray-400">{m.label}</div>
+                <div className={`mt-0.5 font-mono font-semibold ${m.label === 'PIT 基准' && pit.active && !pit.pitCapable ? 'text-amber-600' : 'text-gray-800'}`}>{m.value}</div>
               </div>
             ))}
           </div>
+          {snap && (
+            <div className="mt-2 text-[10px] text-gray-400">
+              数据日期 {snap.dataDate} · 发布 {snap.publishDate} · PIT 能力 {pit.pitCapable ? '可用（无前视）' : pit.active ? '不足（近似）' : '未启用'}
+            </div>
+          )}
         </Card>
       )}
 

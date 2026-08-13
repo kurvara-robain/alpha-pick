@@ -83,7 +83,7 @@ export default function Layout() {
   }, [openGroup])
 
   // 菜单键盘导航
-  const handleButtonKeyDown = (e: React.KeyboardEvent, label: string, items: NavGroup['items']) => {
+  const handleButtonKeyDown = (e: React.KeyboardEvent, label: string, _items: NavGroup['items']) => {
     if (e.key === 'Enter' || e.key === ' ' || e.key === 'ArrowDown') {
       e.preventDefault()
       setOpenGroup(label)

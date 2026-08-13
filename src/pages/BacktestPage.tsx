@@ -1,8 +1,11 @@
 // ─────────────────────────────────────────────────────────────
 // P6 回测分析：配置策略 × 因子组合 → 运行模拟回测 → 查看绩效 / 净值曲线 / 各期选股池回放
 // 结果可保存到 db.backtests，支持回看与删除
+// V2：携带 runId 时从 Run 派生冻结配置（prepareBacktest → startBacktest → completeBacktest），
+//     无 runId 时保留手动 legacy 流程（UI 标注「历史模式」）。
 // ─────────────────────────────────────────────────────────────
 import { useEffect, useMemo, useState } from 'react'
+import { useNavigate, useSearchParams } from 'react-router'
 import {
   CartesianGrid,
   Legend,
@@ -26,12 +29,24 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { runBacktest } from '@/lib/api'
+import { runBacktest, runBacktestForRun } from '@/lib/api'
 import { submitBacktest, pollTask } from '@/lib/taskClient'
 import { fmtNum, fmtPct, pctColor } from '@/lib/format'
 import { getDB, subscribeDB, updateDB } from '@/lib/store'
 import type { DB } from '@/lib/store'
-import type { BacktestResult, RebalanceFreq } from '@/lib/types'
+import {
+  completeBacktest,
+  deriveBacktestExecution,
+  failBacktest,
+  factorFromSnapshot,
+  getBacktestRunRecord,
+  getRun,
+  prepareBacktest,
+  retryFromFailed,
+  startBacktest,
+  strategyFromSnapshot,
+} from '@/lib/experimentRun'
+import type { BacktestConfig, BacktestResult, BacktestRunRecord, ExperimentRun, RebalanceFreq } from '@/lib/types'
 
 const TOOLTIP_STYLE = {
   backgroundColor: '#0f172a',
@@ -200,7 +215,318 @@ function ResultView({ result }: { result: BacktestResult }) {
   )
 }
 
+/**
+ * 页面入口：有 runId → V2 Run 回测流程；无 runId → legacy 手动流程（标注「历史模式」）。
+ */
 export default function BacktestPage() {
+  const [searchParams] = useSearchParams()
+  const runId = searchParams.get('runId')
+  if (runId) return <RunBacktest runId={runId} />
+  return <LegacyBacktest />
+}
+
+const RUN_STATUS_LABEL: Record<string, string> = {
+  draft: '草稿', ready: '已就绪', running_screen: '筛选中', screened: '已筛选',
+  running_backtest: '回测中', completed: '已完成', failed: '失败',
+}
+
+/**
+ * V2：回测配置只从 Run 派生（规则6）。
+ * 阶段1 prepareBacktest(runId, settings) 冻结 BacktestRunRecord（rebalance 强制取
+ * run.screeningSpec.rebalance）；阶段2 startBacktest 启动；完成后 completeBacktest 归档。
+ * 执行引擎的股票池/策略/因子全部来自 Run 快照，禁止从 db.strategies/db.factorPool 重新拼装。
+ */
+function RunBacktest({ runId }: { runId: string }) {
+  const navigate = useNavigate()
+  const [, setVersion] = useState(0)
+  const [run, setRun] = useState<ExperimentRun | null>(() => getRun(runId))
+  const [record, setRecord] = useState<BacktestRunRecord | null>(() => getBacktestRunRecord(runId))
+  const [capital, setCapital] = useState('1000000')
+  const [running, setRunning] = useState(false)
+  const [runError, setRunError] = useState('')
+  const [result, setResult] = useState<BacktestResult | null>(null)
+  const [completedResult, setCompletedResult] = useState<BacktestResult | null>(null)
+
+  useEffect(
+    () =>
+      subscribeDB(() => {
+        setVersion((v) => v + 1)
+        setRun(getRun(runId))
+        setRecord(getBacktestRunRecord(runId))
+      }),
+    [runId],
+  )
+
+  // completed 回看：从 db.backtests 找回带 runId 关联的结果
+  useEffect(() => {
+    if (run?.status !== 'completed') {
+      setCompletedResult(null)
+      return
+    }
+    const found = getDB().backtests.find((b) => (b as BacktestResult & { runId?: string }).runId === runId)
+    setCompletedResult(found ?? null)
+  }, [run, runId])
+
+  // 执行层设置：从 Run 派生（研究配置/rebalance 不由调用方提供）
+  const settings = useMemo(() => (run ? deriveBacktestExecution(run) : null), [run])
+
+  const strategies = (run?.strategySnapshots ?? []).map(strategyFromSnapshot)
+  const factors = (run?.factorSnapshots ?? []).map(factorFromSnapshot)
+  const moduleName = useMemo(() => {
+    const sPart = strategies.length > 0 ? strategies.map((s) => s.name).join(' + ') : '未选择策略'
+    const fPart = factors.length === 0 ? '未选择因子' : factors.length === 1 ? factors[0].name : `${factors[0].name} 等${factors.length}因子`
+    return `${sPart} × ${fPart}`
+  }, [strategies, factors])
+
+  const handleRun = async () => {
+    if (!run || !settings || run.status !== 'screened') return
+    setRunning(true)
+    setRunError('')
+    setResult(null)
+    try {
+      // 阶段1：从 Run 派生执行设置并冻结（spec 内 rebalance 强制取 Run.screeningSpec.rebalance）
+      const rec = prepareBacktest(runId, settings)
+      setRecord(rec)
+      // 阶段2：启动回测记录（再次校验 configHash 完整性）
+      startBacktest(runId, rec.id)
+      // 执行真实回测：策略/因子/股票池全部来自 Run 快照（规则6）
+      const config: BacktestConfig = {
+        moduleName,
+        strategyIds: run.strategySnapshots.map((s) => s.strategyId),
+        factorIds: run.factorSnapshots.map((f) => f.factorId),
+        startDate: settings.startDate,
+        endDate: settings.endDate,
+        rebalance: run.screeningSpec.rebalance,
+        capital: Number(capital) || 0,
+      }
+      const res = await runBacktestForRun(config, strategies, factors)
+      // 完成：写回 BacktestRunRecord + Run 状态，失败则 failBacktest 写入 attempts
+      completeBacktest(runId, res.id)
+      // 归档结果（带 runId 关联，便于 completed 回看）
+      updateDB((d) => {
+        if (!d.backtests.some((b) => b.id === res.id)) {
+          d.backtests.unshift({ ...res, runId } as BacktestResult)
+        }
+      })
+      setResult(res)
+      setRun(getRun(runId))
+      setRecord(getBacktestRunRecord(runId))
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : '回测运行失败，请稍后重试'
+      if (getRun(runId)?.status === 'running_backtest') {
+        try {
+          failBacktest(runId, msg)
+          setRun(getRun(runId))
+          setRecord(getBacktestRunRecord(runId))
+        } catch {
+          // 状态已变化则跳过
+        }
+      }
+      setRunError(msg)
+    } finally {
+      setRunning(false)
+    }
+  }
+
+  const handleRetryScreening = () => {
+    try {
+      retryFromFailed(runId) // attempt+1，保留配置快照 → draft
+      navigate(`/workbench?runId=${runId}`)
+    } catch {
+      setRunError('重试失败：Run 状态不允许回退，请新建 Run')
+    }
+  }
+
+  const displayResult = result ?? completedResult
+
+  return (
+    <div className="space-y-5 p-6">
+      {/* 页头 */}
+      <div className="flex items-center gap-3">
+        <FlaskConical className="size-5 text-amber-500" />
+        <div>
+          <h1 className="text-lg font-semibold text-gray-900">回测分析</h1>
+          <p className="text-xs text-gray-400">
+            Run「{run?.originalQuery.raw ?? '…'}」· asOfDate {run?.asOfDate ?? '—'} · rebalance{' '}
+            {run ? (run.screeningSpec.rebalance === 'weekly' ? '每周' : '每月') : '—'}（来自 Run，不可覆盖）
+          </p>
+        </div>
+        <Badge variant="outline" className="border-amber-400 bg-amber-50 text-amber-700">
+          V2 Run #{runId.slice(-6)}
+        </Badge>
+        {run && (
+          <Badge
+            variant="outline"
+            className={
+              run.status === 'failed'
+                ? 'border-rose-400 bg-rose-50 text-rose-600'
+                : run.status === 'completed'
+                  ? 'border-emerald-400 bg-emerald-50 text-emerald-600'
+                  : 'border-cyan-500/40 bg-cyan-500/10 text-cyan-600'
+            }
+          >
+            {RUN_STATUS_LABEL[run.status] ?? run.status}
+          </Badge>
+        )}
+      </div>
+
+      {!run && (
+        <div className="rounded-xl border border-rose-500/30 bg-rose-500/5 p-4 text-sm text-rose-300">
+          Run 不存在（{runId}），请回到首页重新发起搜索。
+        </div>
+      )}
+
+      {run && run.status !== 'screened' && run.status !== 'running_backtest' && run.status !== 'completed' && (
+        <div className="flex flex-col items-center gap-3 rounded-xl border border-dashed border-gray-300 bg-white py-12 text-center">
+          {run.status === 'draft' && <p className="text-sm text-gray-400">Run 仍在草稿：请先完成策略/因子快照并在「组合工作台」生成候选。</p>}
+          {run.status === 'ready' && <p className="text-sm text-gray-400">Run 已就绪：请前往「组合工作台」运行筛选生成候选。</p>}
+          {run.status === 'running_screen' && <p className="text-sm text-gray-400">Run 正在筛选中，完成后即可回测。</p>}
+          {run.status === 'failed' && (
+            <p className="text-sm text-rose-400">Run 失败：{run.failureReason ?? '未知原因'}</p>
+          )}
+          <Button variant="outline" size="sm" onClick={() => navigate(`/workbench?runId=${runId}`)} className="border-cyan-500/40 text-amber-500 hover:bg-amber-100">
+            前往组合工作台
+          </Button>
+          {run.status === 'failed' && (
+            <Button variant="outline" size="sm" onClick={handleRetryScreening} className="border-rose-500/40 text-rose-400 hover:bg-rose-500/10">
+              重新筛选（attempt+1，保留快照）
+            </Button>
+          )}
+        </div>
+      )}
+
+      {run && (run.status === 'screened' || run.status === 'running_backtest' || run.status === 'completed') && settings && (
+        <>
+          {/* 只读配置面板：全部来自 Run 快照 */}
+          <div className="rounded-xl border border-gray-200 bg-white p-4">
+            <div className="mb-3 flex items-center gap-2">
+              <span className="text-sm font-medium text-gray-800">回测配置（从 Run 派生，只读）</span>
+              <span className="text-[10px] text-gray-400">configHash {run.configHash.slice(0, 12)}…</span>
+            </div>
+            <div className="mb-3 flex flex-wrap items-center gap-1.5 text-xs">
+              {strategies.map((s) => (
+                <Badge key={s.id} variant="outline" className="border-cyan-500/30 bg-amber-100 text-amber-500">
+                  策略 · {s.name}
+                </Badge>
+              ))}
+              {factors.map((f) => (
+                <Badge key={f.id} variant="outline" className="border-violet-500/30 bg-violet-500/10 text-violet-300">
+                  因子 · {f.name}
+                </Badge>
+              ))}
+            </div>
+            <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
+              <div className="space-y-1.5">
+                <span className="text-xs text-gray-500">开始日期（派生）</span>
+                <div className="rounded-lg border border-gray-200 bg-gray-100 px-3 py-2 font-mono text-sm tabular-nums text-gray-800">
+                  {settings.startDate}
+                </div>
+              </div>
+              <div className="space-y-1.5">
+                <span className="text-xs text-gray-500">结束日期（派生）</span>
+                <div className="rounded-lg border border-gray-200 bg-gray-100 px-3 py-2 font-mono text-sm tabular-nums text-gray-800">
+                  {settings.endDate}
+                </div>
+              </div>
+              <div className="space-y-1.5">
+                <span className="text-xs text-gray-500">调仓频率（来自 Run）</span>
+                <div className="rounded-lg border border-gray-200 bg-gray-100 px-3 py-2 text-sm text-gray-800">
+                  {run.screeningSpec.rebalance === 'weekly' ? '每周调仓' : '每月调仓'}
+                </div>
+              </div>
+              <div className="space-y-1.5">
+                <span className="text-xs text-gray-500">初始资金（元）</span>
+                <Input
+                  type="number"
+                  min={0}
+                  step={10000}
+                  value={capital}
+                  onChange={(e) => setCapital(e.target.value)}
+                  className="border-gray-300 bg-gray-100 font-mono tabular-nums"
+                />
+              </div>
+            </div>
+            <div className="mt-4 flex flex-wrap items-center gap-3 border-t border-gray-200 pt-4">
+              <div className="min-w-0">
+                <div className="text-xs text-gray-400">组合名称（Run 派生）</div>
+                <div className="truncate text-sm font-medium text-amber-500">{moduleName}</div>
+              </div>
+              <Button
+                onClick={handleRun}
+                disabled={running || run.status === 'completed' || run.status === 'running_backtest'}
+                className="ml-auto bg-cyan-500 text-slate-950 hover:bg-cyan-400"
+              >
+                {running || run.status === 'running_backtest' ? <Loader2 className="size-4 animate-spin" /> : <Play className="size-4" />}
+                {running || run.status === 'running_backtest'
+                  ? '回测引擎逐期滚动计算中…'
+                  : run.status === 'completed'
+                    ? '已完成'
+                    : '运行回测'}
+              </Button>
+            </div>
+            {record && record.status !== 'pending' && (
+              <p className="mt-2 text-xs text-gray-400">
+                最近回测记录 #{record.id.slice(-6)} · {record.status}
+                {record.status === 'completed' && record.backtestResultId && ` · result ${record.backtestResultId.slice(-6)}`}
+                {record.status === 'failed' && record.failureReason && ` · ${record.failureReason}`}
+              </p>
+            )}
+          </div>
+
+          {runError && !running && (
+            <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-rose-500/30 bg-rose-500/5 p-4">
+              <p className="text-sm text-rose-300">{runError}</p>
+              <Button variant="outline" size="sm" onClick={handleRun} className="shrink-0 border-rose-500/40 text-rose-300 hover:bg-rose-500/10">
+                重试
+              </Button>
+            </div>
+          )}
+
+          {running && (
+            <div className="flex items-center justify-center gap-2 rounded-xl border border-gray-200 bg-white py-14 text-sm text-gray-500">
+              <Loader2 className="size-4 animate-spin text-amber-500" />
+              回测引擎逐期滚动计算中…
+            </div>
+          )}
+
+          {!running && displayResult && (
+            <div className="space-y-4">
+              <div className="flex flex-wrap items-center gap-3">
+                <h2 className="text-sm font-semibold text-gray-900">
+                  回测结果：<span className="text-amber-500">{displayResult.config.moduleName}</span>
+                </h2>
+                <span className="text-xs text-gray-400">生成于 {fmtTime(displayResult.createdAt)}</span>
+              </div>
+              <ResultView result={displayResult} />
+            </div>
+          )}
+
+          {!running && !displayResult && !runError && (
+            <div className="rounded-xl border border-dashed border-gray-300 bg-white py-14 text-center text-xs text-gray-400">
+              Run 已通过筛选（候选快照就绪），点击「运行回测」执行两阶段回测流程。
+            </div>
+          )}
+        </>
+      )}
+
+      {run?.status === 'running_backtest' && (
+        <div className="flex items-center justify-center gap-2 rounded-xl border border-gray-200 bg-white py-14 text-sm text-gray-500">
+          <Loader2 className="size-4 animate-spin text-amber-500" />
+          回测进行中（页面刷新后可在「组合工作台」查看状态）…
+        </div>
+      )}
+
+      {run?.status === 'completed' && !displayResult && (
+        <div className="rounded-xl border border-dashed border-gray-300 bg-white py-14 text-center text-xs text-gray-400">
+          Run 已完成回测，但结果记录未归档（历史记录可能已被删除）。
+        </div>
+      )}
+    </div>
+  )
+}
+
+/** legacy：无 runId 的手动回测流程（行为不变，UI 标注「历史模式」） */
+function LegacyBacktest() {
   const [db, setDb] = useState<DB>(() => getDB())
   useEffect(() => subscribeDB(() => setDb(getDB())), [])
 
@@ -224,7 +550,7 @@ export default function BacktestPage() {
   const [result, setResult] = useState<BacktestResult | null>(null)
 
   // 研究级回测
-  const [researchTaskId, setResearchTaskId] = useState('')
+  const [, setResearchTaskId] = useState('')
   const [researchProgress, setResearchProgress] = useState(0)
   const [researchStatus, setResearchStatus] = useState('')
   const [researchRunning, setResearchRunning] = useState(false)
@@ -320,6 +646,9 @@ export default function BacktestPage() {
             对策略 × 因子组合进行历史区间模拟回测，评估绩效并回放各期选股池
           </p>
         </div>
+        <Badge variant="outline" className="ml-auto border-gray-300 text-gray-500">
+          历史模式（无 Run 关联）
+        </Badge>
       </div>
 
       {/* ── 回测配置区 ─────────────────────────────────────── */}

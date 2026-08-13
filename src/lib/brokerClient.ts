@@ -52,6 +52,7 @@ export interface BrokerConfig {
   enabled: boolean
   lastSyncAt?: string
   error?: string
+  token?: string
 }
 
 // ═══════════════════════════════════════════════════════════════

@@ -6,8 +6,6 @@
 
 if (import.meta.env.DEV) {
   const renderCounts = new Map<string, { count: number; firstSeen: number }>()
-  const RENDER_BURST_THRESHOLD = 50
-  const RENDER_BURST_WINDOW = 50 // ms
 
   const origError = console.error.bind(console)
   let lastFlush = Date.now()
