@@ -492,7 +492,7 @@ function StockCombobox({
 
 export default function HoldingsPage() {  const db = useDB()
   // 统一持仓视图：聚合 legacy 三类来源（db.holdings / positionStore / simTrade），只读展示并标注来源
-  const unified = useMemo(() => unifiedHeldPositions(), [db])
+  const unified = unifiedHeldPositions()
   const [code, setCode] = useState('')
   const [cost, setCost] = useState('')
   const [shares, setShares] = useState('')

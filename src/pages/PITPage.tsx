@@ -39,8 +39,10 @@ export default function PITPage() {
   const [pitTick, setPitTick] = useState(0)
 
   // 全局 PIT 基准（规则8：所有模块共用同一 asOfDate）
-  const pit = useMemo(() => getPitContext(), [pitTick])
-  const snap = useMemo(() => getActiveSnapshot(), [pitTick])
+  // pitTick 触发重新渲染；上下文读取器自身负责返回当前快照。
+  void pitTick
+  const pit = getPitContext()
+  const snap = getActiveSnapshot()
 
   const loadSnapshot = async () => {
     setLoading(true); setError('')

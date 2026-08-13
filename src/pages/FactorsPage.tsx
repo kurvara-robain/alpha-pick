@@ -410,8 +410,8 @@ export default function FactorsPage() {
             <tbody>
               {filtered.map((f) => {
                 const evalData = researchState.data?.results?.[f.id]
-                const icVal = (evalData as any)?.dic20
-                const irVal = (evalData as any)?.dicir20
+                const icVal = evalData?.dic20
+                const irVal = evalData?.dicir20
                 return (
                   <tr
                     key={f.id}

@@ -43,7 +43,7 @@ export default function UploadDialog({ onDone }: { onDone: () => void }) {
     // 自动填充标题（去掉扩展名）
     if (!title) {
       const base = file.name.replace(/\.[^.]+$/, '')
-      setTitle(base.replace(/[_\-]/g, ' '))
+      setTitle(base.replace(/[_-]/g, ' '))
     }
 
     if (isTextFile(file.name)) {

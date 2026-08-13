@@ -83,7 +83,7 @@ export default function Layout() {
   }, [openGroup])
 
   // 菜单键盘导航
-  const handleButtonKeyDown = (e: React.KeyboardEvent, label: string, _items: NavGroup['items']) => {
+  const handleButtonKeyDown = (e: React.KeyboardEvent, label: string) => {
     if (e.key === 'Enter' || e.key === ' ' || e.key === 'ArrowDown') {
       e.preventDefault()
       setOpenGroup(label)
@@ -162,7 +162,7 @@ export default function Layout() {
                             : 'text-gray-400 hover:bg-white/5 hover:text-gray-200',
                         )}
                         onClick={() => setOpenGroup(isOpen ? null : group.label)}
-                        onKeyDown={(e) => handleButtonKeyDown(e, group.label, group.items)}
+                        onKeyDown={(e) => handleButtonKeyDown(e, group.label)}
                         ref={(el) => { menuRefs.current[group.label] = el }}
                         aria-haspopup="menu"
                         aria-expanded={isOpen}

@@ -7,7 +7,7 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { getBrokerStatus, syncBrokerAccount, saveBrokerConfig, importBrokerToHoldings } from '@/lib/brokerClient'
-import type { BrokerConfig } from '@/lib/brokerClient'
+import type { BrokerConfig, BrokerType } from '@/lib/brokerClient'
 
 export default function BrokerPanel() {
   const [brokers, setBrokers] = useState<BrokerConfig[]>([])
@@ -30,7 +30,7 @@ export default function BrokerPanel() {
     setSyncing(type)
     setSyncResult(null)
     try {
-      const account = await syncBrokerAccount(type as any)
+      const account = await syncBrokerAccount(type as BrokerType)
       setSyncResult({ broker: type, success: true, message: `同步完成: ${account.positions.length} 只持仓` })
       if (account.positions.length > 0) {
         setImporting(true)

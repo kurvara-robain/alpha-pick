@@ -61,7 +61,7 @@ top30 → top100：超额 +7.5% → +8.3%，回撤、夏普、换手全面改善
 ## 复现方式
 
 ```bash
-cd /Users/kurvara/kimi_workspace/alpha-pick
+cd /path/to/alpha-pick
 # 基线 top100（现用正式版）
 python3 scripts/ml-backtest.py
 # 缓冲带：BT_BUFFER=60 BT_TOPN=30 BT_RETRAIN=4 BT_LASTN=260 BT_OUT="-buffer" python3 scripts/ml-backtest.py

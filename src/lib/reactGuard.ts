@@ -23,7 +23,6 @@ if (import.meta.env.DEV) {
   console.error = (...args: unknown[]) => {
     const msg = String(args[0] ?? '')
     if (msg.includes('Maximum update depth exceeded')) {
-      // eslint-disable-next-line no-console
       origError(
         '[AlphaMind] 检测到 React 无限更新循环。',
         '\n可能原因：',

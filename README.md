@@ -11,7 +11,7 @@ PowerShell example:
 
 ```powershell
 $env:ALPHAMIND_PYTHON = 'C:\ProgramData\miniconda3\envs\qlib\python.exe'
-npm ci --allow-remote=all
+npm ci
 npm run dev -- --host 0.0.0.0 --port 7200
 ```
 

@@ -79,7 +79,7 @@ export default function DiscoveredFactorsPanel() {
       if (!res.ok) throw new Error('评估失败')
       const result = await res.json()
       setBtMap(prev => ({ ...prev, [expr]: { status: 'done', ic: result.ic_mean ?? result.ic } }))
-    } catch (e: any) {
+    } catch {
       setBtMap(prev => ({ ...prev, [expr]: { status: 'error' } }))
     }
   }

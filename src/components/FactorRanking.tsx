@@ -36,7 +36,7 @@ export function FactorRanking({ factors, correlations, selectedIds, onToggle }: 
 
   const categories = useMemo(() => ['all', ...new Set(factors.map(f => f.category))], [factors])
   const filtered = useMemo(() => {
-    let list = category === 'all' ? factors : factors.filter(f => f.category === category)
+    const list = category === 'all' ? factors : factors.filter(f => f.category === category)
     return [...list].sort((a,b) => Math.abs(b[sortBy]) - Math.abs(a[sortBy]))
   }, [factors, sortBy, category])
 

@@ -504,10 +504,15 @@ function LegacyWorkbench() {
   const currPoolKey = JSON.stringify([[...db.factorPool].sort(), enabledStrategies.map(s => s.id).sort()])
 
   useEffect(() => {
+    const currentDB = getDB()
+    const currentStrategies = currentDB.strategies.filter((s) => s.enabled)
+    const currentFactors = currentDB.factorPool
+      .map((id) => currentDB.factors.find((f) => f.id === id))
+      .filter((f): f is NonNullable<typeof f> => Boolean(f))
     // 初始默认全选
     if (!initialized) {
-      setSelectedStrategies(enabledStrategies.map((s) => s.id))
-      setSelectedFactors(poolFactors.map((f) => f.id))
+      setSelectedStrategies(currentStrategies.map((s) => s.id))
+      setSelectedFactors(currentFactors.map((f) => f.id))
       setInitialized(true)
       prevPoolRef.current = currPoolKey
       return
@@ -516,9 +521,9 @@ function LegacyWorkbench() {
     if (prevPoolRef.current === currPoolKey) return
     prevPoolRef.current = currPoolKey
     // 修剪已失效的选项
-    setSelectedFactors((prev) => prev.filter((id) => db.factorPool.includes(id)))
+    setSelectedFactors((prev) => prev.filter((id) => currentDB.factorPool.includes(id)))
     setSelectedStrategies((prev) =>
-      prev.filter((id) => enabledStrategies.some((s) => s.id === id)),
+      prev.filter((id) => currentStrategies.some((s) => s.id === id)),
     )
   }, [initialized, currPoolKey])
 

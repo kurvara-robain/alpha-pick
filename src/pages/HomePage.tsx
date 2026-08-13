@@ -31,7 +31,6 @@ export default function HomePage() {
     requestNotificationPermission()
     const added = checkSignalChanges()
     if (added > 0) setAlerts(getAlerts())
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- 一次性初始化：检查信号变更后同步提醒状态
   }, [])
 
   const loading = indicesState.loading || metaState.loading || universeState.loading

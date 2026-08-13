@@ -332,12 +332,13 @@ export default function WatchlistPage() {
   const [db, setDb] = useState<DB>(() => getDB())
   const [selectedId, setSelectedId] = useState<string>('')
   const universeState = useAsync(loadUniverse)
+  const reloadUniverse = universeState.reload
 
   // 每 30 秒自动刷新行情
   useEffect(() => {
-    const timer = setInterval(() => universeState.reload?.(), 30_000)
+    const timer = setInterval(() => reloadUniverse(), 30_000)
     return () => clearInterval(timer)
-  }, [universeState.reload])
+  }, [reloadUniverse])
 
   useEffect(() => subscribeDB(() => setDb(getDB())), [])
 

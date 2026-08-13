@@ -127,11 +127,12 @@ export function importBrokerToSimTrade(account: BrokerAccount): void {
           credibility: 'research',
           metrics: {
             totalReturn: 0, annualReturn: 0, maxDrawdown: 0,
-            sharpe: 0, winRate: 0, tradeCount: 0, turnover: 0,
+            sharpe: 0, winRate: 0, turnover: 0,
           },
           curve: [],
           periods: [],
-        } as any)
+          createdAt: order.updatedAt,
+        })
       }
     }
   })

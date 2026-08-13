@@ -21,6 +21,8 @@ const SAMPLE_CODES = [
 ]
 
 type ScanEntry = { code: string; name: string; factors: ZettarancFactors }
+type ScanMode = 'watchlist' | '30' | '100' | '200'
+type UniverseName = { code: string; name?: string }
 
 async function loadKline(code: string): Promise<KlineData | null> {
   try {
@@ -33,7 +35,7 @@ async function loadKline(code: string): Promise<KlineData | null> {
 }
 
 export default function ZettarancPage() {
-  const [mode, setMode] = useState<'watchlist'|'30'|'100'|'200'>('30')
+  const [mode, setMode] = useState<ScanMode>('30')
   const [scanning, setScanning] = useState(false)
   const [results, setResults] = useState<ScanEntry[]>([])
   const [concept, setConcept] = useState<KnowledgeCard | null>(null)
@@ -44,7 +46,7 @@ export default function ZettarancPage() {
 
   // 加载股票名称映射
   useEffect(() => {
-    fetch('/data/universe.json').then(r => r.json()).then((data: any[]) => {
+    fetch('/data/universe.json').then(r => r.json()).then((data: UniverseName[]) => {
       const map: Record<string, string> = {}
       for (const s of (data ?? [])) map[s.code] = s.name ?? s.code
       setNameMap(map)
@@ -109,7 +111,7 @@ export default function ZettarancPage() {
               const v = e.target.value
               if (watchlists[v]) { setMode('watchlist'); setSelList(v) }
               else if (v === '__manual__') { setMode('watchlist'); setSelList('') }
-              else setMode(v as any)
+              else if (v === '30' || v === '100' || v === '200') setMode(v)
             }}>
             {wlCodes.length > 1 && <option value="__manual__">手动自选 ({wlCodes.length - 1}只)</option>}
             {Object.entries(watchlists).map(([name, codes]) => (

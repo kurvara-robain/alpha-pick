@@ -103,7 +103,7 @@ export default function StrategyDebugger() {
 
   const db = getDB()
   const strategies = db.strategies.filter((s) => s.enabled)
-  const universe = universeState.data ?? []
+  const universe = useMemo(() => universeState.data ?? [], [universeState.data])
 
   const stockMatches = useMemo(() => {
     if (stockQuery.length < 1) return []

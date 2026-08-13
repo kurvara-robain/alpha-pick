@@ -91,7 +91,7 @@ describe('SimTrade Engine', () => {
   })
 
   it('rejects sell when T+1 locked', () => {
-    let account = loadAccount()
+    const account = loadAccount()
     // First buy
     const { account: afterBuy } = executeBuy(account, {
       code: '600519', name: '贵州茅台', price: 1300, changePct: 0.5, isStarMarket: false,
@@ -105,7 +105,7 @@ describe('SimTrade Engine', () => {
   })
 
   it('markToMarket updates position values', () => {
-    let account = loadAccount()
+    const account = loadAccount()
     const { account: afterBuy } = executeBuy(account, {
       code: '600519', name: '贵州茅台', price: 1300, changePct: 0.5, isStarMarket: false,
     }, 100)

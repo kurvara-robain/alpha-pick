@@ -27,7 +27,7 @@ function StockChart({ kline }: { kline: KlineData }) {
   const _kdj = useMemo(() => kdj(h, l, c), [h, l, c]), _macd = useMemo(() => macd(c), [c])
   const data = useMemo(() => c.slice(st).map((_, i) => { const idx = st + i; return { date: kline.dates[idx]?.slice(5) ?? '', close: c[idx], ma5: ma5[idx], ma10: ma10[idx], ma20: ma20[idx], ma60: ma60[idx], k: +_kdj.k[idx].toFixed(1), d: +_kdj.d[idx].toFixed(1), j: +_kdj.j[idx].toFixed(1), dif: +_macd.dif[idx].toFixed(2), dea: +_macd.dea[idx].toFixed(2), mbar: +_macd.m[idx].toFixed(2) } }), [st, c, kline.dates, ma5, ma10, ma20, ma60, _kdj, _macd])
   return (<div className="mt-2 border-t border-gray-100 pt-2">
-    <div className="flex gap-1 mb-2">{['ma', 'kdj', 'macd'].map(k => <button key={k} onClick={() => setInd(k as any)} className={cn('px-2 py-0.5 text-[10px] rounded border', ind === k ? 'bg-amber-100 border-amber-300 text-amber-700' : 'border-gray-200 text-gray-500')}>{k.toUpperCase()}</button>)}</div>
+    <div className="flex gap-1 mb-2">{(['ma', 'kdj', 'macd'] as const).map(k => <button key={k} onClick={() => setInd(k)} className={cn('px-2 py-0.5 text-[10px] rounded border', ind === k ? 'bg-amber-100 border-amber-300 text-amber-700' : 'border-gray-200 text-gray-500')}>{k.toUpperCase()}</button>)}</div>
     <ResponsiveContainer width="100%" height={180}><ComposedChart data={data}><CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" /><XAxis dataKey="date" tick={{ fontSize: 9 }} interval="preserveStartEnd" /><YAxis yAxisId="p" tick={{ fontSize: 9 }} domain={['auto', 'auto']} /><Tooltip contentStyle={{ fontSize: 11, borderRadius: 6 }} /><Line yAxisId="p" type="monotone" dataKey="close" stroke="#f59e0b" dot={false} strokeWidth={1.5} name="收盘" />{ind === 'ma' && <><Line yAxisId="p" type="monotone" dataKey="ma5" stroke="#3b82f6" dot={false} strokeWidth={0.8} name="MA5" /><Line yAxisId="p" type="monotone" dataKey="ma10" stroke="#8b5cf6" dot={false} strokeWidth={0.8} name="MA10" /><Line yAxisId="p" type="monotone" dataKey="ma20" stroke="#ec4899" dot={false} strokeWidth={0.8} name="MA20" /><Line yAxisId="p" type="monotone" dataKey="ma60" stroke="#10b981" dot={false} strokeWidth={0.8} name="MA60" /></>}<Legend wrapperStyle={{ fontSize: 10 }} /></ComposedChart></ResponsiveContainer>
     {ind === 'kdj' && <ResponsiveContainer width="100%" height={60}><ComposedChart data={data}><Line type="monotone" dataKey="k" stroke="#3b82f6" dot={false} strokeWidth={1} name="K" /><Line type="monotone" dataKey="d" stroke="#f59e0b" dot={false} strokeWidth={1} name="D" /><Line type="monotone" dataKey="j" stroke="#ef4444" dot={false} strokeWidth={1} name="J" /></ComposedChart></ResponsiveContainer>}
     {ind === 'macd' && <ResponsiveContainer width="100%" height={60}><ComposedChart data={data}><Line type="monotone" dataKey="dif" stroke="#3b82f6" dot={false} strokeWidth={1} name="DIF" /><Line type="monotone" dataKey="dea" stroke="#f59e0b" dot={false} strokeWidth={1} name="DEA" /><Bar dataKey="mbar" fill="#ef4444" opacity={0.5} name="MACD" /></ComposedChart></ResponsiveContainer>}
@@ -37,7 +37,6 @@ function StockChart({ kline }: { kline: KlineData }) {
 // ═══════ 智能搜索（自选添加） ═══════
 type UE = { code: string; name: string; price: number }
 let _uc: UE[] | null = null
-let _ucVer = 0  // universe 加载完成时 +1，SmartInput 用此触发重新搜索
 
 const PINYIN_MAP: Record<string, string> = (() => { const m: Record<string, string> = {}; const a = (k: string, v: string) => { m[k] = v }
   for (let i = 65; i <= 90; i++) a(String.fromCharCode(i), String.fromCharCode(i))
@@ -165,7 +164,6 @@ export default function MyStocksPage() {
   useEffect(() => {
     loadUniverse().then(u => {
       _uc = u.map(x => ({ code: x.code, name: x.name, price: x.price }))
-      _ucVer++
       setLoaded(true)
       setWsnaps(computeSnapshots(getWatchlist(), u))
       setPsnaps(computePositionSnapshots(getPositions(), u))

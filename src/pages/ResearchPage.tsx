@@ -416,7 +416,9 @@ export default function ResearchPage() {
   const [refDocs, setRefDocs] = useState<ResearchDocument[]>([])
   const [kbVersion, setKbVersion] = useState(0)
 
-  const docs = useMemo(() => listDocuments(), [kbVersion])
+  // kbVersion 触发重新渲染；文档存储读取器提供最新列表。
+  void kbVersion
+  const docs = listDocuments()
 
   const handleSubmit = (params: { stock: UniverseStock; frameworkId: string; nlQuery: string; refDocIds: string[] }) => {
     setRunning(true)
