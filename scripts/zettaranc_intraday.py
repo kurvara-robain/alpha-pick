@@ -4,6 +4,7 @@ Zettaranc 盘中异动扫描 + 盘后计划生成 — Cron Job
 运行时间：10:00 / 14:00 (盘中扫描) + 16:00 (盘后计划)
 """
 import json, os, sys
+import runtime_compat  # noqa: F401  # normalize Windows stdio to UTF-8
 from datetime import datetime
 from pathlib import Path
 import numpy as np
@@ -17,7 +18,7 @@ def load_klines(code, days=120):
     if not fp.exists():
         return None
     try:
-        with open(fp) as f:
+        with open(fp, encoding='utf-8') as f:
             data = json.load(f)
         n = len(data.get('closes', []))
         if n < days:

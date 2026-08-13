@@ -7,7 +7,8 @@
 // ─────────────────────────────────────────────────────────────
 import { spawn } from "node:child_process"
 import type { ServerResponse } from "node:http"
-import type { Plugin } from "vite"
+import type { Plugin, ViteDevServer } from "vite"
+import { PROJECT_ROOT } from "./runtime"
 
 export type RefreshMode = "quick" | "deep"
 
@@ -83,7 +84,7 @@ interface ScriptResult {
   klineFailed?: number
 }
 
-function startRefresh(cwd: string, mode: RefreshMode) {
+function startRefresh(mode: RefreshMode) {
   Object.assign(state, idleState(), {
     running: true,
     mode,
@@ -92,7 +93,7 @@ function startRefresh(cwd: string, mode: RefreshMode) {
   })
   const args = ["scripts/refresh-quotes.mjs"]
   if (mode === "deep") args.push("--deep")
-  const child = spawn(process.execPath, args, { cwd })
+  const child = spawn(process.execPath, args, { cwd: PROJECT_ROOT })
 
   let buf = ""
   let resultLine: ScriptResult | null = null
@@ -146,36 +147,39 @@ function startRefresh(cwd: string, mode: RefreshMode) {
 }
 
 export function refreshApi(): Plugin {
+  const installMiddleware = (server: { middlewares: ViteDevServer["middlewares"] }) => {
+    server.middlewares.use((req, res, next) => {
+      const path = req.url?.split("?")[0]
+      if (path === "/api/refresh" && req.method === "POST") {
+        if (state.running) {
+          json(res, 409, { started: false, error: "已有拉通任务在运行中" })
+          return
+        }
+        readBody(req)
+          .then((body) => {
+            const mode: RefreshMode =
+              typeof body === "object" && body !== null && (body as { mode?: unknown }).mode === "deep"
+                ? "deep"
+                : "quick"
+            startRefresh(mode)
+            json(res, 200, { started: true, mode })
+          })
+          .catch((e: Error) => {
+            json(res, 400, { started: false, error: e.message })
+          })
+        return
+      }
+      if (path === "/api/refresh/status" && req.method === "GET") {
+        json(res, 200, state)
+        return
+      }
+      next()
+    })
+  }
+
   return {
     name: "refresh-api",
-    configureServer(server) {
-      server.middlewares.use((req, res, next) => {
-        const path = req.url?.split("?")[0]
-        if (path === "/api/refresh" && req.method === "POST") {
-          if (state.running) {
-            json(res, 409, { started: false, error: "已有拉通任务在运行中" })
-            return
-          }
-          readBody(req)
-            .then((body) => {
-              const mode: RefreshMode =
-                typeof body === "object" && body !== null && (body as { mode?: unknown }).mode === "deep"
-                  ? "deep"
-                  : "quick"
-              startRefresh(server.config.root, mode)
-              json(res, 200, { started: true, mode })
-            })
-            .catch((e: Error) => {
-              json(res, 400, { started: false, error: e.message })
-            })
-          return
-        }
-        if (path === "/api/refresh/status" && req.method === "GET") {
-          json(res, 200, state)
-          return
-        }
-        next()
-      })
-    },
+    configureServer: installMiddleware,
+    configurePreviewServer: installMiddleware,
   }
 }

@@ -15,6 +15,7 @@
 { updatedAt, model, features: [...], oos: {ic, icir, folds}, scores: {code: 0-100}, topPicks: [...] }
 """
 import importlib.util
+import runtime_compat  # noqa: F401  # normalize Windows stdio to UTF-8
 import json
 import math
 import os
@@ -75,7 +76,7 @@ def rank01(x):
 
 def main():
     t0 = time.time()
-    research = json.loads(RESEARCH_JSON.read_text())
+    research = json.loads(RESEARCH_JSON.read_text(encoding="utf-8"))
     features, feat_meta = select_features(research)
     # PIT 模式：时点口径上下文；启用后不加载"现名 ST"名单（st_codes 恒空，过滤改由 pit_eligible 逐样本判定）
     pit_ctx = fr.pit_context() if fr.PIT_MODE else None
@@ -86,7 +87,7 @@ def main():
     st_codes = set()
     if pit_ctx is None:
         try:
-            for s0 in json.loads((DATA / "universe.json").read_text()):
+            for s0 in json.loads((DATA / "universe.json").read_text(encoding="utf-8")):
                 if "ST" in (s0.get("name") or "").upper():
                     st_codes.add(s0["code"])
         except Exception:
@@ -108,7 +109,7 @@ def main():
     skipped = 0
     for fp in files:
         try:
-            d = json.loads(fp.read_text())
+            d = json.loads(fp.read_text(encoding="utf-8"))
             dates = d["dates"]
             c, o, h, l, v = fr.load_prices(d)
         except Exception:
@@ -244,7 +245,7 @@ def main():
     latest_rows = []
     for fp in score_files:
         try:
-            d = json.loads(fp.read_text())
+            d = json.loads(fp.read_text(encoding="utf-8"))
             c, o, h, l, v = fr.load_prices(d)
         except Exception:
             continue
@@ -286,7 +287,7 @@ def main():
 
     names = {}
     try:
-        for s in json.loads((DATA / "universe.json").read_text()):
+        for s in json.loads((DATA / "universe.json").read_text(encoding="utf-8")):
             names[s["code"]] = s["name"]
     except Exception:
         pass
@@ -307,12 +308,12 @@ def main():
     if pit_ctx is not None:
         out["pitMode"] = True
         out["method"] += "；PIT 时点口径（训练池含退市股，ST 用历史区间判定）"
-    OUT.write_text(json.dumps(out, ensure_ascii=False, indent=1))
+    OUT.write_text(json.dumps(out, ensure_ascii=False, indent=1), encoding="utf-8")
 
     # 写回 factor-research.json，让评估表展示合成信号（PIT 模式不写回，避免污染主产物）
     if pit_ctx is None:
         try:
-            research = json.loads(RESEARCH_JSON.read_text())
+            research = json.loads(RESEARCH_JSON.read_text(encoding="utf-8"))
             research.setdefault("results", {})["mlScore"] = {
                 "name": "ML 合成信号（梯度提升树）",
                 "dir": "desc",
@@ -324,7 +325,7 @@ def main():
                 "dicir20": round(oos_ir, 2) if oos_ir is not None else None,
                 "spread20": None, "spreadPosRatio": None,
             }
-            RESEARCH_JSON.write_text(json.dumps(research, ensure_ascii=False, indent=1))
+            RESEARCH_JSON.write_text(json.dumps(research, ensure_ascii=False, indent=1), encoding="utf-8")
         except Exception as e:
             print(f"写回 research 失败（忽略）：{e}")
 

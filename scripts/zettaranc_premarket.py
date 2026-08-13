@@ -5,6 +5,7 @@ Zettaranc 盘前扫描 — Cron Job
 步骤：①竞价看盘 + ②昨日涨停回顾 → 输出盘前简报
 """
 import json, os, sys
+import runtime_compat  # noqa: F401  # normalize Windows stdio to UTF-8
 from datetime import datetime, timedelta
 from pathlib import Path
 import numpy as np
@@ -19,7 +20,7 @@ def load_klines(code):
     if not fp.exists():
         return None
     try:
-        with open(fp) as f:
+        with open(fp, encoding='utf-8') as f:
             data = json.load(f)
         if len(data.get('closes', [])) < 20:
             return None

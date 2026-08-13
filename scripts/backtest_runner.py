@@ -4,6 +4,7 @@ AlphaMind 事件驱动回测引擎
 逐日模拟：选股 → T+1 开盘成交 → 持仓跟踪 → 净值计算
 """
 import json, sys, os, argparse, random
+import runtime_compat  # noqa: F401  # normalize Windows stdio to UTF-8
 from datetime import datetime, timedelta
 from pathlib import Path
 
@@ -23,7 +24,7 @@ def fmt_date(d):
     return d.strftime('%Y-%m-%d')
 
 def load_universe():
-    with open(UNIVERSE_FILE) as f:
+    with open(UNIVERSE_FILE, encoding='utf-8') as f:
         return json.load(f)
 
 def load_klines():
@@ -35,7 +36,7 @@ def load_klines():
             log_progress(int(i / len(files) * 30), f"加载K线 {i}/{len(files)}")
         code = fp.stem
         try:
-            with open(fp) as f:
+            with open(fp, encoding='utf-8') as f:
                 data = json.load(f)
             klines[code] = {'dates': data.get('dates', []), 'closes': data.get('closes', [])}
         except:
@@ -221,7 +222,7 @@ def run_backtest(args):
     }
     
     output_path = DATA_DIR / f'research-backtest-{args.task_id}.json'
-    with open(output_path, 'w') as f:
+    with open(output_path, 'w', encoding='utf-8') as f:
         json.dump(result, f, ensure_ascii=False)
     
     log_progress(100, f"回测完成: 累计收益 {total_return:.1f}%, 夏普 {sharpe:.2f}, 最大回撤 {max_dd:.1f}%")

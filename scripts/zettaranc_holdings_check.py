@@ -5,6 +5,7 @@ Zettaranc 盘后持仓体检 — Cron Job
 检查持仓股：B1/S1信号 + 去弱留强 + 风险告警
 """
 import json, os, sys
+import runtime_compat  # noqa: F401  # normalize Windows stdio to UTF-8
 from datetime import datetime
 from pathlib import Path
 import numpy as np
@@ -19,7 +20,7 @@ def load_klines(code, days=120):
     if not fp.exists():
         return None
     try:
-        with open(fp) as f:
+        with open(fp, encoding='utf-8') as f:
             data = json.load(f)
         n = len(data.get('closes', []))
         if n < days:
@@ -89,7 +90,7 @@ def load_holdings():
     if not SYNC_FILE.exists():
         return {}
     try:
-        with open(SYNC_FILE) as f:
+        with open(SYNC_FILE, encoding='utf-8') as f:
             data = json.load(f)
     except:
         return {}

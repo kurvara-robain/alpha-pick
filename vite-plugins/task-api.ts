@@ -11,6 +11,7 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { spawn } from 'node:child_process'
 import type { Plugin, ViteDevServer } from 'vite'
+import { PROJECT_ROOT, PYTHON_ENV, PYTHON_EXECUTABLE, projectPath } from './runtime'
 
 // ═══════════════════════════════════════════════════════════════
 // 类型
@@ -32,7 +33,7 @@ interface Task {
 // 任务存储（文件系统）
 // ═══════════════════════════════════════════════════════════════
 
-const TASKS_DIR = path.resolve('.alphamind-tasks')
+const TASKS_DIR = projectPath('.alphamind-tasks')
 if (!fs.existsSync(TASKS_DIR)) fs.mkdirSync(TASKS_DIR, { recursive: true })
 
 function taskPath(id: string): string {
@@ -79,9 +80,9 @@ function runPythonScript(scriptPath: string, args: string[], task: Task): void {
   task.message = '正在执行 Python 脚本…'
   saveTask(task)
 
-  const child = spawn('/usr/bin/python3', [scriptPath, ...args], {
-    cwd: process.cwd(),
-    env: { ...process.env, PYTHONUNBUFFERED: '1' },
+  const child = spawn(PYTHON_EXECUTABLE, [scriptPath, ...args], {
+    cwd: PROJECT_ROOT,
+    env: PYTHON_ENV,
     timeout: 10 * 60 * 1000, // 10 分钟超时
   })
 
@@ -160,34 +161,49 @@ function readBody(req: import('node:http').IncomingMessage): Promise<string> {
 // ═══════════════════════════════════════════════════════════════
 
 export function taskApi(): Plugin {
+  const installMiddleware = (server: { middlewares: ViteDevServer['middlewares'] }) => {
+    server.middlewares.use(async (req, res, next) => {
+      const url = req.url?.split('?')[0] ?? ''
+
+      // CORS 预检
+      if (req.method === 'OPTIONS') {
+        res.writeHead(204, {
+          'Access-Control-Allow-Origin': '*',
+          'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+          'Access-Control-Allow-Headers': 'Content-Type',
+        })
+        res.end()
+        return
+      }
+
+      await handleTaskRequest(req, res, next, url)
+    })
+  }
+
   return {
     name: 'alphamind-task-api',
-    configureServer(server: ViteDevServer) {
-      server.middlewares.use(async (req, res, next) => {
-        const url = req.url?.split('?')[0] ?? ''
+    configureServer: installMiddleware,
+    configurePreviewServer: installMiddleware,
+  }
+}
 
-        // CORS 预检
-        if (req.method === 'OPTIONS') {
-          res.writeHead(204, {
-            'Access-Control-Allow-Origin': '*',
-            'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-            'Access-Control-Allow-Headers': 'Content-Type',
-          })
-          res.end()
-          return
-        }
-
+async function handleTaskRequest(
+  req: import('node:http').IncomingMessage,
+  res: import('node:http').ServerResponse,
+  next: () => void,
+  url: string,
+): Promise<void> {
         // ── POST /api/agent/run ──
         if (url === '/api/agent/run' && req.method === 'POST') {
           const body = await readBody(req)
           let params: Record<string, unknown> = {}
           try { params = JSON.parse(body) } catch { /* */ }
           const taskId = uid()
-          const child = spawn('/usr/bin/python3', [
-            path.resolve('scripts/agent_runtime.py'), 'run',
+          const child = spawn(PYTHON_EXECUTABLE, [
+            projectPath('scripts', 'agent_runtime.py'), 'run',
             '--task-id', taskId,
             '--params', JSON.stringify(params),
-          ], { cwd: process.cwd(), env: { ...process.env, PYTHONUNBUFFERED: '1' }, timeout: 60000 })
+          ], { cwd: PROJECT_ROOT, env: PYTHON_ENV, timeout: 60000 })
           let stdout = ''
           child.stdout?.on('data', (d: Buffer) => { stdout += d.toString() })
           child.on('close', () => {
@@ -203,10 +219,10 @@ export function taskApi(): Plugin {
           const body = await readBody(req)
           let params: Record<string, unknown> = {}
           try { params = JSON.parse(body) } catch { /* */ }
-          const child = spawn('/usr/bin/python3', [
-            path.resolve('scripts/agent_runtime.py'), 'approve',
+          const child = spawn(PYTHON_EXECUTABLE, [
+            projectPath('scripts', 'agent_runtime.py'), 'approve',
             '--run-id', (params.runId as string) ?? '',
-          ], { cwd: process.cwd(), env: { ...process.env, PYTHONUNBUFFERED: '1' }, timeout: 30000 })
+          ], { cwd: PROJECT_ROOT, env: PYTHON_ENV, timeout: 30000 })
           let stdout = ''
           child.stdout?.on('data', (d: Buffer) => { stdout += d.toString() })
           child.on('close', () => {
@@ -219,9 +235,9 @@ export function taskApi(): Plugin {
 
         // ── GET /api/agent/runs ──
         if (url === '/api/agent/runs' && req.method === 'GET') {
-          const child = spawn('/usr/bin/python3', [
-            path.resolve('scripts/agent_runtime.py'), 'list',
-          ], { cwd: process.cwd(), env: { ...process.env, PYTHONUNBUFFERED: '1' }, timeout: 10000 })
+          const child = spawn(PYTHON_EXECUTABLE, [
+            projectPath('scripts', 'agent_runtime.py'), 'list',
+          ], { cwd: PROJECT_ROOT, env: PYTHON_ENV, timeout: 10000 })
           let stdout = ''
           child.stdout?.on('data', (d: Buffer) => { stdout += d.toString() })
           child.on('close', () => {
@@ -244,11 +260,11 @@ export function taskApi(): Plugin {
             message: 'PIT 截面生成中…', createdAt: new Date().toISOString(),
           }
           saveTask(task)
-          const child = spawn('/usr/bin/python3', [
-            path.resolve('scripts/pit_snapshot.py'),
+          const child = spawn(PYTHON_EXECUTABLE, [
+            projectPath('scripts', 'pit_snapshot.py'),
             '--date', date, '--top-n', '100',
             '--output', `pit-${date}.json`,
-          ], { cwd: process.cwd(), env: { ...process.env, PYTHONUNBUFFERED: '1' }, timeout: 300000 })
+          ], { cwd: PROJECT_ROOT, env: PYTHON_ENV, timeout: 300000 })
           child.stdout?.on('data', (d: Buffer) => {
             const text = d.toString()
             const pm = text.match(/PROGRESS:(\d+)/)
@@ -279,10 +295,10 @@ export function taskApi(): Plugin {
             message: '因子挖掘任务已提交', createdAt: new Date().toISOString(),
           }
           saveTask(task)
-          const child = spawn('/Users/kurvara/.hermes/hermes-agent/venv/bin/python3.11', [
-            path.resolve('scripts/factor_miner.py'), 'mine',
+          const child = spawn(PYTHON_EXECUTABLE, [
+            projectPath('scripts', 'factor_miner.py'), 'mine',
             '-g', '500', '-k', '50', '-o', 'discovered_factors.json',
-          ], { cwd: process.cwd(), env: { ...process.env, PYTHONUNBUFFERED: '1' }, timeout: 600000 })
+          ], { cwd: PROJECT_ROOT, env: PYTHON_ENV, timeout: 600000 })
           child.stdout?.on('data', (d: Buffer) => {
             const text = d.toString()
             const pm = text.match(/PROGRESS:(\d+)/)
@@ -311,9 +327,9 @@ export function taskApi(): Plugin {
           let params: Record<string, unknown> = {}
           try { params = JSON.parse(body) } catch { /* */ }
           const expr = (params.expression as string) ?? ''
-          const child = spawn('/usr/bin/python3', [
-            path.resolve('scripts/factor_miner.py'), 'eval', '-e', expr,
-          ], { cwd: process.cwd(), env: { ...process.env, PYTHONUNBUFFERED: '1' }, timeout: 120000 })
+          const child = spawn(PYTHON_EXECUTABLE, [
+            projectPath('scripts', 'factor_miner.py'), 'eval', '-e', expr,
+          ], { cwd: PROJECT_ROOT, env: PYTHON_ENV, timeout: 120000 })
           let stdout = ''
           child.stdout?.on('data', (d: Buffer) => { stdout += d.toString() })
           child.stderr?.on('data', (d: Buffer) => { stdout += d.toString() })
@@ -339,7 +355,7 @@ export function taskApi(): Plugin {
           }
           saveTask(task)
 
-          const scriptPath = path.resolve('scripts/backtest_runner.py')
+          const scriptPath = projectPath('scripts', 'backtest_runner.py')
           const strategyIds = (params.strategyIds as string[] ?? []).join(',')
           const factorIds = (params.factorIds as string[] ?? []).join(',')
           const startDate = (params.startDate as string) ?? '2024-01-01'
@@ -374,8 +390,8 @@ export function taskApi(): Plugin {
             json(res, 400, { error: '无效日期' })
             return
           }
-          const runtimePath = path.resolve('.runtime/pit', `pit-${date}.json`)
-          const legacyPath = path.resolve('public/data', `pit-${date}.json`)
+          const runtimePath = projectPath('.runtime', 'pit', `pit-${date}.json`)
+          const legacyPath = projectPath('public', 'data', `pit-${date}.json`)
           const candidates = [runtimePath, legacyPath]
           let found = ''
           for (const p of candidates) {
@@ -387,7 +403,7 @@ export function taskApi(): Plugin {
           }
           try {
             const data = JSON.parse(fs.readFileSync(found, 'utf8'))
-            json(res, 200, { ...data, _source: path.relative(process.cwd(), found) })
+            json(res, 200, { ...data, _source: path.relative(PROJECT_ROOT, found) })
           } catch (e) {
             json(res, 500, { error: `PIT 截面解析失败: ${e instanceof Error ? e.message : String(e)}` })
           }
@@ -402,7 +418,6 @@ export function taskApi(): Plugin {
             const parsed = JSON.parse(body || '{}') as { date?: string }
             if (parsed.date && /^\d{4}-\d{2}-\d{2}$/.test(parsed.date)) date = parsed.date
           } catch { /* 保持默认日期 */ }
-
           const id = uid()
           const task: Task = {
             id, type: 'pit_snapshot', status: 'pending', progress: 0,
@@ -411,8 +426,8 @@ export function taskApi(): Plugin {
           saveTask(task)
 
           // 正确脚本：pit_snapshot.py 按 ≤date 口径重建截面并输出到 .runtime/pit/（不入 Git）
-          const scriptPath = path.resolve('scripts/pit_snapshot.py')
-          const outDir = path.resolve('.runtime/pit')
+          const scriptPath = projectPath('scripts', 'pit_snapshot.py')
+          const outDir = projectPath('.runtime', 'pit')
           fs.mkdirSync(outDir, { recursive: true })
           runPythonScript(scriptPath, ['--date', date, '--output', `pit-${date}.json`, '--out-dir', outDir], task)
 
@@ -442,9 +457,9 @@ export function taskApi(): Plugin {
           let params: Record<string, unknown> = {}
           try { params = JSON.parse(body) } catch { /* */ }
           const broker = (params.broker as string) ?? 'tushare'
-          const child = spawn('/usr/bin/python3', [
-            path.resolve('scripts/broker_sync.py'), 'sync', '--broker', broker,
-          ], { cwd: process.cwd(), env: { ...process.env, PYTHONUNBUFFERED: '1' }, timeout: 30000 })
+          const child = spawn(PYTHON_EXECUTABLE, [
+            projectPath('scripts', 'broker_sync.py'), 'sync', '--broker', broker,
+          ], { cwd: PROJECT_ROOT, env: PYTHON_ENV, timeout: 30000 })
           let stdout = ''
           child.stdout?.on('data', (d: Buffer) => { stdout += d.toString() })
           child.on('close', (code) => {
@@ -461,8 +476,8 @@ export function taskApi(): Plugin {
 
         // ── GET /api/broker/status ──
         if (url === '/api/broker/status' && req.method === 'GET') {
-          const child = spawn('/usr/bin/python3', [path.resolve('scripts/broker_sync.py'), 'status'], {
-            cwd: process.cwd(), env: { ...process.env, PYTHONUNBUFFERED: '1' }, timeout: 10000,
+          const child = spawn(PYTHON_EXECUTABLE, [projectPath('scripts', 'broker_sync.py'), 'status'], {
+            cwd: PROJECT_ROOT, env: PYTHON_ENV, timeout: 10000,
           })
           let stdout = ''
           child.stdout?.on('data', (d: Buffer) => { stdout += d.toString() })
@@ -481,11 +496,11 @@ export function taskApi(): Plugin {
           const body = await readBody(req)
           let params: Record<string, unknown> = {}
           try { params = JSON.parse(body) } catch { /* */ }
-          const child = spawn('/usr/bin/python3', [
-            path.resolve('scripts/broker_sync.py'), 'config',
+          const child = spawn(PYTHON_EXECUTABLE, [
+            projectPath('scripts', 'broker_sync.py'), 'config',
             '--broker', (params.type as string) ?? 'tushare',
             '--token', (params.token as string) ?? '',
-          ], { cwd: process.cwd(), env: { ...process.env, PYTHONUNBUFFERED: '1' }, timeout: 10000 })
+          ], { cwd: PROJECT_ROOT, env: PYTHON_ENV, timeout: 10000 })
           let stdout = ''
           child.stdout?.on('data', (d: Buffer) => { stdout += d.toString() })
           child.on('close', () => {
@@ -512,10 +527,7 @@ export function taskApi(): Plugin {
           return
         }
 
-        next()
-      })
-    },
-  }
+  next()
 }
 
 // ═══════════════════════════════════════════════════════════════

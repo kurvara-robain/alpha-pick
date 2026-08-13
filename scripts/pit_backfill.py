@@ -9,6 +9,7 @@
 # 幂等可断点：已存在的 K 线文件跳过；JSON 产物每次全量重建（一次调用成本）。
 # ─────────────────────────────────────────────────────────────
 import json
+import runtime_compat  # noqa: F401  # normalize Windows stdio to UTF-8
 import os
 import sys
 import time
@@ -27,7 +28,7 @@ os.makedirs(KLINE_DIR, exist_ok=True)
 
 token = next(
     l.split("=", 1)[1].strip().strip('"').strip("'")
-    for l in open(TOKEN_FILE).read().splitlines()
+    for l in open(TOKEN_FILE, encoding="utf-8").read().splitlines()
     if l.strip().startswith("TUSHARE_TOKEN=")
 )
 _call_count = 0
@@ -78,7 +79,7 @@ def main():
         _, items = ts_call("stock_basic", {"list_status": status}, "ts_code,list_date,delist_date")
         for code, ld, dd in items:
             timeline[code] = {"list": ld, "delist": dd}
-    with open(os.path.join(OUT_DIR, "listing-timeline.json"), "w") as f:
+    with open(os.path.join(OUT_DIR, "listing-timeline.json"), "w", encoding="utf-8") as f:
         json.dump(timeline, f, ensure_ascii=False)
     log(f"1/3 时间线：{len(timeline)} 只（含退市/暂停）")
 
@@ -94,7 +95,7 @@ def main():
         iv = [[sd, ed] for sd, ed, name in rows if "ST" in name.upper()]
         if iv:
             st_intervals[code] = iv
-    with open(os.path.join(OUT_DIR, "st-intervals.json"), "w") as f:
+    with open(os.path.join(OUT_DIR, "st-intervals.json"), "w", encoding="utf-8") as f:
         json.dump(st_intervals, f, ensure_ascii=False)
     log(f"2/3 ST 区间：{len(st_intervals)} 只股票曾有 ST 标记（namechange 记录 {len(items)} 条）")
 
@@ -132,7 +133,7 @@ def main():
                 "delistDate": dash(timeline[code]["delist"]),
             }
             tmp = os.path.join(KLINE_DIR, f".{code}.tmp")
-            with open(tmp, "w") as f:
+            with open(tmp, "w", encoding="utf-8") as f:
                 json.dump(kl, f, ensure_ascii=False)
             os.replace(tmp, os.path.join(KLINE_DIR, f"{code}.json"))
             done += 1

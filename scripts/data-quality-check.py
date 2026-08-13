@@ -11,6 +11,7 @@
 退出码：0 = 通过，1 = 阻断，2 = 自检自身出错（按阻断处理，宁可不训）
 """
 import json
+import runtime_compat  # noqa: F401  # normalize Windows stdio to UTF-8
 import sys
 import time
 from datetime import datetime, timezone, timedelta
@@ -51,7 +52,7 @@ def main():
 
     for fp in files:
         try:
-            d = json.loads(fp.read_text())
+            d = json.loads(fp.read_text(encoding="utf-8"))
             dates = d.get("dates") or []
             c_qfq = np.asarray(d.get("closes") or [], dtype=float)
             ch = d.get("closesHfq")
@@ -107,7 +108,7 @@ def main():
 
     # 5. universe 字段
     try:
-        u = json.loads((DATA / "universe.json").read_text())
+        u = json.loads((DATA / "universe.json").read_text(encoding="utf-8"))
         sample = u[len(u) // 2] if u else {}
         missing = [f for f in REQUIRED_FIELDS if f not in sample]
         ok = not missing
@@ -126,7 +127,7 @@ def main():
         "blocked": blocked,
         "elapsedSec": round(time.time() - t0, 1),
     }
-    OUT.write_text(json.dumps(out, ensure_ascii=False, indent=1))
+    OUT.write_text(json.dumps(out, ensure_ascii=False, indent=1), encoding="utf-8")
     status = "通过" if passed else "阻断"
     print(f"数据质量门禁：{status}（{n_files} 只，{out['elapsedSec']}s）", flush=True)
     for c in checks:

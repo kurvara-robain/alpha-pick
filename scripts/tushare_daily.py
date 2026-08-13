@@ -29,6 +29,7 @@
 #   python3 scripts/tushare_daily.py --dry-run  # 只拉取+计算+打印，不落盘
 # ─────────────────────────────────────────────────────────────
 import json
+import runtime_compat  # noqa: F401  # normalize Windows stdio to UTF-8
 import os
 import sys
 import time

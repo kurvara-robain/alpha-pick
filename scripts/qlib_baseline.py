@@ -5,6 +5,7 @@ Qlib vs AlphaMind 基线对比测试
 绕过了 Qlib 数据格式层，聚焦模型本身对比
 """
 import json
+import runtime_compat  # noqa: F401  # normalize Windows stdio to UTF-8
 import sys
 from datetime import datetime
 from pathlib import Path
@@ -39,7 +40,7 @@ def load_klines(n_stocks=None):
         if i % 1000 == 0:
             print(f"  加载 {i}/{total}", flush=True)
         try:
-            with open(fp) as f:
+            with open(fp, encoding='utf-8') as f:
                 data = json.load(f)
             df = pd.DataFrame({
                 'date': pd.to_datetime(data['dates']),
@@ -410,7 +411,7 @@ def main():
         print(f"  {result['sharpeWarning']}")
     
     # 保存
-    with open(OUTPUT_FILE, 'w') as f:
+    with open(OUTPUT_FILE, 'w', encoding='utf-8') as f:
         json.dump(result, f, ensure_ascii=False, indent=2, default=str)
     print(f"\n💾 结果已保存: {OUTPUT_FILE}")
     

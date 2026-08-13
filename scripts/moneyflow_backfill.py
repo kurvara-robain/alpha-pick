@@ -20,6 +20,7 @@
 #   python3 scripts/moneyflow_backfill.py --status           # 只看进度
 # ─────────────────────────────────────────────────────────────
 import json
+import runtime_compat  # noqa: F401  # normalize Windows stdio to UTF-8
 import os
 import sys
 import time

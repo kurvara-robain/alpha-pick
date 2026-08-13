@@ -5,17 +5,21 @@
 """
 import subprocess
 import sys
+from pathlib import Path
 
-PROJECT_DIR = "/Users/kurvara/kimi_workspace/alpha-pick"
-SCRIPT = "scripts/factor-research.py"
+import runtime_compat  # noqa: F401  # normalize Windows stdio to UTF-8
+
+PROJECT_DIR = Path(__file__).resolve().parent.parent
+SCRIPT = PROJECT_DIR / "scripts" / "factor-research.py"
 
 
 def run(ctx):
     proc = subprocess.run(
-        [sys.executable, SCRIPT],
-        cwd=PROJECT_DIR,
+        [sys.executable, str(SCRIPT)],
+        cwd=str(PROJECT_DIR),
         capture_output=True,
         text=True,
+        encoding="utf-8",
         timeout=1500,
     )
     log = (proc.stdout or "") + (proc.stderr or "")
@@ -26,7 +30,8 @@ def run(ctx):
     import re
     data = {}
     try:
-        data = json.load(open(f"{PROJECT_DIR}/public/data/factor-research.json"))
+        with open(PROJECT_DIR / "public" / "data" / "factor-research.json", encoding="utf-8") as f:
+            data = json.load(f)
     except Exception:
         pass
     results = data.get("results", {})

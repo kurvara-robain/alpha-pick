@@ -5,6 +5,7 @@ AlphaMind → Qlib 数据转换
 输出: public/data/qlib_data/
 """
 import json
+import runtime_compat  # noqa: F401  # normalize Windows stdio to UTF-8
 import os
 import sys
 from datetime import datetime
@@ -33,7 +34,7 @@ def load_klines(limit=None):
             print(f"  加载K线 {i}/{total}", flush=True)
         code = fp.stem
         try:
-            with open(fp) as f:
+            with open(fp, encoding='utf-8') as f:
                 data = json.load(f)
             df = pd.DataFrame({
                 'date': pd.to_datetime(data['dates']),
@@ -98,14 +99,14 @@ def convert_to_qlib_csv(dfs, output_dir):
     cal_dir = output_dir / 'calendars'
     cal_dir.mkdir(parents=True, exist_ok=True)
     sorted_dates = sorted(all_dates)
-    with open(cal_dir / 'day.txt', 'w') as f:
+    with open(cal_dir / 'day.txt', 'w', encoding='utf-8', newline='\n') as f:
         f.write('\n'.join(sorted_dates))
     
     # 生成股票列表
     inst_dir = output_dir / 'instruments'
     inst_dir.mkdir(parents=True, exist_ok=True)
     sorted_inst = sorted(all_instruments)
-    with open(inst_dir / 'all.txt', 'w') as f:
+    with open(inst_dir / 'all.txt', 'w', encoding='utf-8', newline='\n') as f:
         for inst in sorted_inst:
             # Qlib format: instrument, start_date, end_date
             first_date = dfs[inst].index[0].strftime('%Y-%m-%d')
@@ -113,7 +114,7 @@ def convert_to_qlib_csv(dfs, output_dir):
             f.write(f"{inst}\t{first_date}\t{last_date}\n")
     
     # 保存元信息
-    with open(output_dir / 'meta.json', 'w') as f:
+    with open(output_dir / 'meta.json', 'w', encoding='utf-8') as f:
         json.dump({
             'instruments': len(all_instruments),
             'dates': len(all_dates),

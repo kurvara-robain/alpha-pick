@@ -5,6 +5,7 @@ AlphaMind Agent Graph Runtime
 支持检查点/恢复/超时/重试
 """
 import json, sys, os, time, traceback
+import runtime_compat  # noqa: F401  # normalize Windows stdio to UTF-8
 from datetime import datetime
 from pathlib import Path
 from enum import Enum
@@ -66,7 +67,7 @@ def execute_graph(task_id, params, run_id=None):
         # 从检查点恢复
         path = CHECKPOINT_DIR / f'{run_id}.json'
         if path.exists():
-            with open(path) as f:
+            with open(path, encoding='utf-8') as f:
                 graph_run = json.load(f)
         else:
             return {'error': f'Run not found: {run_id}'}
@@ -152,7 +153,7 @@ def execute_graph(task_id, params, run_id=None):
     return graph_run
 
 def save_checkpoint(run_id, graph_run):
-    with open(CHECKPOINT_DIR / f'{run_id}.json', 'w') as f:
+    with open(CHECKPOINT_DIR / f'{run_id}.json', 'w', encoding='utf-8') as f:
         json.dump(graph_run, f, indent=2, ensure_ascii=False, default=str)
 
 def approve_node(run_id):
@@ -161,7 +162,7 @@ def approve_node(run_id):
     if not path.exists():
         return {'error': f'Run not found: {run_id}'}
     
-    with open(path) as f:
+    with open(path, encoding='utf-8') as f:
         graph_run = json.load(f)
     
     # 找到 awaiting_approval 的节点
@@ -176,7 +177,7 @@ def list_runs():
     runs = []
     for fp in sorted(CHECKPOINT_DIR.glob('*.json'), key=lambda p: p.stat().st_mtime, reverse=True):
         try:
-            with open(fp) as f:
+            with open(fp, encoding='utf-8') as f:
                 run = json.load(f)
             runs.append({
                 'run_id': run['run_id'],
@@ -218,7 +219,7 @@ if __name__ == '__main__':
     elif args.action == 'get':
         path = CHECKPOINT_DIR / f'{args.run_id}.json'
         if path.exists():
-            with open(path) as f:
+            with open(path, encoding='utf-8') as f:
                 print(f.read())
         else:
             print(json.dumps({'error': f'Run not found: {args.run_id}'}, ensure_ascii=False))

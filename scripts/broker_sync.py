@@ -5,6 +5,7 @@ AlphaMind 券商数据同步引擎
 从券商拉取持仓、账户资产、成交记录 → JSON 输出
 """
 import json, sys, os, argparse
+import runtime_compat  # noqa: F401  # normalize Windows stdio to UTF-8
 from datetime import datetime
 from pathlib import Path
 
@@ -14,12 +15,12 @@ CACHE_DIR.mkdir(exist_ok=True)
 
 def load_config():
     if CONFIG_FILE.exists():
-        with open(CONFIG_FILE) as f:
+        with open(CONFIG_FILE, encoding='utf-8') as f:
             return json.load(f)
     return {}
 
 def save_config(config):
-    with open(CONFIG_FILE, 'w') as f:
+    with open(CONFIG_FILE, 'w', encoding='utf-8') as f:
         json.dump(config, f, indent=2, ensure_ascii=False)
 
 def sync_tushare():
@@ -139,7 +140,7 @@ def run_sync(broker_type):
         result = {'error': f'不支持的券商类型: {broker_type}'}
     
     if 'error' not in result:
-        with open(cache_path, 'w') as f:
+        with open(cache_path, 'w', encoding='utf-8') as f:
             json.dump(result, f, indent=2, ensure_ascii=False)
     
     return result

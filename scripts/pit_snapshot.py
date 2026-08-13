@@ -4,6 +4,7 @@ PIT (Point-in-Time) 时间旅行引擎
 对任意历史日期，重建当时可得的股票快照（无前视偏差）
 """
 import json, sys, os, argparse
+import runtime_compat  # noqa: F401  # normalize Windows stdio to UTF-8
 from datetime import datetime, timedelta
 from pathlib import Path
 
@@ -12,7 +13,7 @@ UNIVERSE_FILE = DATA_DIR / 'universe.json'
 KLINE_DIR = DATA_DIR / 'kline'
 
 def load_universe():
-    with open(UNIVERSE_FILE) as f:
+    with open(UNIVERSE_FILE, encoding='utf-8') as f:
         return json.load(f)
 
 def load_stock_kline(code):
@@ -21,7 +22,7 @@ def load_stock_kline(code):
     if not fp.exists():
         return None
     try:
-        with open(fp) as f:
+        with open(fp, encoding='utf-8') as f:
             return json.load(f)
     except:
         return None
@@ -180,7 +181,7 @@ if __name__ == '__main__':
             out_dir = Path(__file__).parent.parent / '.runtime' / 'pit'
             out_dir.mkdir(parents=True, exist_ok=True)
         out_path = out_dir / args.output
-        with open(out_path, 'w') as f:
+        with open(out_path, 'w', encoding='utf-8') as f:
             json.dump(result, f, ensure_ascii=False)
         print(f"OUTPUT:{args.output}")
     

@@ -12,6 +12,7 @@ Spearman 秩相关。dir 为文献预期方向，dic 为方向化后的 IC（正
 同时暴露 compute_factor_arrays() / FACTORS，供 ml-composite.py（树模型合成）复用。
 """
 import json
+import runtime_compat  # noqa: F401  # normalize Windows stdio to UTF-8
 import math
 import os
 import sys
@@ -483,7 +484,7 @@ def load_moneyflow(code, dates):
     if not path.exists():
         return None
     try:
-        d = json.loads(path.read_text())
+        d = json.loads(path.read_text(encoding="utf-8"))
         mdates = d["dates"]
         n = len(dates)
         nm = np.full(n, np.nan)
@@ -515,8 +516,8 @@ def pit_context():
         return _pit_ctx_cache
     ctx = None
     try:
-        tl_raw = json.loads((RESEARCH_DATA / "listing-timeline.json").read_text())
-        st_raw = json.loads((RESEARCH_DATA / "st-intervals.json").read_text())
+        tl_raw = json.loads((RESEARCH_DATA / "listing-timeline.json").read_text(encoding="utf-8"))
+        st_raw = json.loads((RESEARCH_DATA / "st-intervals.json").read_text(encoding="utf-8"))
         timeline = {}
         for code, info in tl_raw.items():
             lst = info.get("list")
@@ -568,7 +569,7 @@ def main():
     skipped = 0
     for fp in files:
         try:
-            d = json.loads(fp.read_text())
+            d = json.loads(fp.read_text(encoding="utf-8"))
             dates = d["dates"]
             c, o, h, l, v = load_prices(d)
         except Exception:
@@ -665,7 +666,7 @@ def main():
     prev = {}
     if OUT.exists():
         try:
-            prev = json.loads(OUT.read_text())
+            prev = json.loads(OUT.read_text(encoding="utf-8"))
         except Exception:
             prev = {}
     history = prev.get("history", [])
@@ -686,7 +687,7 @@ def main():
         "results": results,
         "history": history,
     }
-    OUT.write_text(json.dumps(out, ensure_ascii=False, indent=1))
+    OUT.write_text(json.dumps(out, ensure_ascii=False, indent=1), encoding="utf-8")
     print(f"写出 {OUT}，耗时 {(time.time()-t0)/60:.1f} 分钟", flush=True)
     print("── |dic20| 排行 ──")
     for f, r in sorted(results.items(), key=lambda kv: -(abs(kv[1]["dic20"] or 0))):

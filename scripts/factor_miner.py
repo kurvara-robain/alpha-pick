@@ -18,6 +18,7 @@ AlphaMind 因子表达式引擎 + 自动挖掘器
     ts_corr(close, volume, 20)                             # 20日价量相关
 """
 import json, sys, os, re, math, random, itertools
+import runtime_compat  # noqa: F401  # normalize Windows stdio to UTF-8
 from datetime import datetime
 from pathlib import Path
 from collections import defaultdict
@@ -36,7 +37,7 @@ def load_stock_klines(code, min_days=252):
     fp = KLINE_DIR / f'{code}.json'
     if not fp.exists(): return None
     try:
-        with open(fp) as f:
+        with open(fp, encoding='utf-8') as f:
             data = json.load(f)
         if len(data.get('closes', [])) < min_days: return None
         return data
@@ -52,7 +53,7 @@ def load_all_stocks():
         if i % 1000 == 0:
             print(f"  {i}/{len(files)}")
         try:
-            with open(fp) as f:
+            with open(fp, encoding='utf-8') as f:
                 data = json.load(f)
             code = fp.stem
             if len(data.get('closes', [])) >= 252:
@@ -528,6 +529,6 @@ if __name__ == '__main__':
             "count": len(best),
             "generated": args.generate,
         }
-        with open(output_path, 'w') as f:
+        with open(output_path, 'w', encoding='utf-8') as f:
             json.dump(result, f, indent=2, ensure_ascii=False)
         print(f"\n结果已保存: {output_path}")

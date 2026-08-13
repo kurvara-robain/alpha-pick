@@ -15,6 +15,7 @@
 { updatedAt, method, params, metrics, curve: [{date, port, bench}], periods, deciles }
 """
 import importlib.util
+import runtime_compat  # noqa: F401  # normalize Windows stdio to UTF-8
 import json
 import os
 import sys
@@ -58,7 +59,7 @@ OUT = DATA / f"ml-backtest{OUT_SUFFIX}.json"
 
 def main():
     t0 = time.time()
-    research = json.loads(RESEARCH_JSON.read_text())
+    research = json.loads(RESEARCH_JSON.read_text(encoding="utf-8"))
     features, _ = mc.select_features(research)
     print(f"特征 {len(features)} 个", flush=True)
 
@@ -71,7 +72,7 @@ def main():
     industry_of = {}
     st_codes = set()
     try:
-        for s in json.loads((DATA / "universe.json").read_text()):
+        for s in json.loads((DATA / "universe.json").read_text(encoding="utf-8")):
             industry_of[s["code"]] = s.get("industry") or "未知"
             if pit_ctx is None and "ST" in (s.get("name") or "").upper():
                 st_codes.add(s["code"])
@@ -87,7 +88,7 @@ def main():
         files = files + sorted(fr.KLINE_DELISTED.glob("*.json"))
     for i, fp in enumerate(files):
         try:
-            d = json.loads(fp.read_text())
+            d = json.loads(fp.read_text(encoding="utf-8"))
             dates = d["dates"]
             c, o, h, l, v = fr.load_prices(d)
             n = len(c)
@@ -105,7 +106,7 @@ def main():
 
     # ── 日历与基准：沪深300（indices.json，约260个交易日）──
     # 以指数交易日历为主日历：股票在该日有K线则参与当期的截面，没有则缺席
-    idx_series = json.loads(INDICES_JSON.read_text())["series"]
+    idx_series = json.loads(INDICES_JSON.read_text(encoding="utf-8"))["series"]
     s300 = next(x for x in idx_series if x["code"] == "sh000300")["series"]
     cal = [x["date"] for x in s300]
     bench_close = {x["date"]: x["close"] for x in s300}
@@ -363,7 +364,7 @@ def main():
             "delistExitEvents": pit_exit_events[:50],
             "delistExitCount": len(pit_exit_events),
         }
-    OUT.write_text(json.dumps(out, ensure_ascii=False, indent=1))
+    OUT.write_text(json.dumps(out, ensure_ascii=False, indent=1), encoding="utf-8")
     print(f"回测 {metrics['periods']} 期（{metrics['spanMonths']}个月）：组合 {metrics['totalReturn']}% vs 基准 {metrics['benchReturn']}%，年化超额 {metrics['annExcess']}%，最大回撤 {metrics['maxDrawdown']}%，夏普 {metrics['sharpe']}，胜率 {metrics['winRateVsBench']}%", flush=True)
     print(f"写出 {OUT}，耗时 {(time.time()-t0)/60:.1f} 分钟", flush=True)
     return 0
