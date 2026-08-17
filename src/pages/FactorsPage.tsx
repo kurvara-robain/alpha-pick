@@ -70,10 +70,10 @@ function FactorCard({
       </p>
 
       {/* 第三行：指标 + 操作 */}
-      <div className="flex items-center justify-between mt-auto pt-1.5 border-t border-gray-50">
-        <span className="text-[10px] text-gray-400 truncate max-w-[60%]">
+      <div className="flex items-center justify-between mt-auto pt-1.5 border-t border-gray-50 min-w-0 gap-1">
+        <span className="text-[10px] text-gray-400 truncate max-w-[60%] min-w-0">
           {factor.performance ? (
-            <span className="text-gray-500">{factor.performance.slice(0, 40)}</span>
+            <span className="text-gray-500 truncate">{factor.performance.slice(0, 40)}</span>
           ) : (
             <span className="text-gray-300">暂无实测</span>
           )}
