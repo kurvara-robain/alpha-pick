@@ -154,4 +154,18 @@ export default defineConfig({
       "@": path.resolve(__dirname, "./src"),
     },
   },
+  build: {
+    chunkSizeWarningLimit: 600,
+    rollupOptions: {
+      output: {
+        manualChunks(id: string) {
+          if (!id.includes("node_modules")) return undefined
+          // 图表库体积大且独立，单独拆出；其余（含 react 全家桶 + radix UI）统一 vendor，
+          // 避免跨 chunk 循环引用
+          if (id.includes("echarts") || id.includes("zrender") || id.includes("klinecharts") || id.includes("lightweight-charts") || id.includes("d3-") || id.includes("/d3/")) return "charts"
+          return "vendor"
+        },
+      },
+    },
+  },
 });
