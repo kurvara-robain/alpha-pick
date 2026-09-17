@@ -1,1 +1,1 @@
-{"source":"Tushare Pro（行情/快照/复权因子主通道），东方财富/腾讯降级为兜底，公开接口","fetchedAt":"2026-09-16T11:24:04.820043+08:00","stockCount":5563,"klineFailed":0,"klineDays":2500,"upCount":1130,"downCount":4376,"turnoverYi":16253,"cashflowUpdated":false,"note":"K线为前复权日线；市值单位亿元；现金流转单季度差分；AI评分为演示模型输出"}
+{"source":"Tushare Pro（行情/快照/复权因子主通道），东方财富/腾讯降级为兜底，公开接口","fetchedAt":"2026-09-18T02:31:52.458009+08:00","stockCount":5566,"klineFailed":1,"klineDays":2500,"upCount":2584,"downCount":2820,"turnoverYi":18365,"cashflowUpdated":false,"note":"K线为前复权日线；市值单位亿元；现金流转单季度差分；AI评分为演示模型输出"}
