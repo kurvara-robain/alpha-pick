@@ -18,7 +18,11 @@ NOW = datetime.now()
 def load_klines(code, days=120):
     fp = KLINE_DIR / f'{code}.json'
     if not fp.exists():
-        return None
+        # 持仓清单里的代码可能不带交易所后缀（000056），K线文件名带（000056.SZ）
+        cands = sorted(KLINE_DIR.glob(f'{code}.*.json'))
+        if not cands:
+            return None
+        fp = cands[0]
     try:
         with open(fp, encoding='utf-8') as f:
             data = json.load(f)
@@ -120,7 +124,7 @@ def main():
             continue
         kl = load_klines(code)
         if not kl:
-            results.append((code, pos, None, "数据不足"))
+            results.append((code, {'profit': None, 'j': None, 'signals': [], 'alerts': ['数据不足'], 'weak_flag': '⚪ 无数据'}, None, '数据不足'))
             continue
 
         last = len(kl['closes']) - 1
@@ -174,7 +178,7 @@ def main():
         }, kl, None))
 
     # 排序：浮盈从低到高
-    results.sort(key=lambda x: x[1]['profit'])
+    results.sort(key=lambda x: (x[1]['profit'] is None, x[1]['profit'] or 0.0))
 
     print(f"\n{'代码':<12} {'浮盈':>8} {'J值':>6} {'信号':<30} {'状态'}")
     print("-" * 70)
@@ -184,11 +188,13 @@ def main():
         status = f"{info['weak_flag']}"
         if alert_text:
             status += f" {alert_text}"
-        print(f"{code:<12} {info['profit']:>+7.1f}% {info['j']:>5.0f}  {sig_text:<30} {status}")
+        profit_txt = f"{info['profit']:>+7.1f}%" if info['profit'] is not None else "     n/a"
+        j_txt = f"{info['j']:>5.0f}" if info['j'] is not None else "  n/a"
+        print(f"{code:<12} {profit_txt} {j_txt}  {sig_text:<30} {status}")
 
     # 综合建议
-    weak_count = sum(1 for _, info, _, _ in results if info['profit'] < -10)
-    alert_count = sum(1 for _, info, _, _ in results if info['alerts'])
+    weak_count = sum(1 for _, info, _, _ in results if info['profit'] is not None and info['profit'] < -10)
+    alert_count = sum(1 for _, info, _, _ in results if info['alerts'] and info['profit'] is not None)
     b1_count = sum(1 for _, info, _, _ in results if any('B1' in s for s in info['signals']))
 
     print(f"\n{'=' * 50}")
