@@ -412,6 +412,29 @@ OPS = ['+', '-', '*', '/']
 FUNCS = ['ts_mean', 'ts_std', 'ts_max', 'ts_min', 'delay', 'delta', 'ts_corr']
 WINDOWS = [5, 10, 20, 40, 60]
 
+RAW_FIELDS = {'open', 'high', 'low', 'close', 'volume', 'amount'}
+MIN_VALID_DAYS = 60  # IC 有效交易日下限：样本期内有效天数太少时 IC/ICIR 是噪声（曾出现 6 天样本 IC=-0.22 排第一）
+
+
+def is_degenerate_expr(expr: str) -> bool:
+    """剔除无信息表达式：裸原始字段、x/x 恒等、ts_corr(x,x,n) 恒为 1。
+
+    这类个体在遗传生成里必然出现，进因子库只会污染面板。
+    """
+    e = expr.replace(' ', '')
+    if e in RAW_FIELDS:
+        return True
+    # 整体形如 (X)/(X) 或 X/X
+    m = re.fullmatch(r'\(?([a-z_]+(?:\([^()]*\))?)/(?:\1)\)?', e)
+    if m:
+        return True
+    # ts_corr(x, x, n) / ts_cov(x, x, n) 恒为 1（相关系数）/方差
+    for fn in ('ts_corr', 'ts_cov'):
+        if re.search(rf'{fn}\((\w+),\1,', e):
+            return True
+    return False
+
+
 def random_factor_expr(depth=0, max_depth=4):
     """随机生成一个因子表达式"""
     if depth >= max_depth:
@@ -453,8 +476,10 @@ def mine_factors(stocks, n_generate=100, n_keep=20, top_n_stocks=300):
         try:
             if any(r.get('expression') == expr_str for r in results):
                 continue
+            if is_degenerate_expr(expr_str):
+                continue
             result = evaluate_factor(stock_sample, expr_str)
-            if result is None or result.get('valid_days', 0) == 0:
+            if result is None or result.get('valid_days', 0) < MIN_VALID_DAYS:
                 continue
             result['expression'] = expr_str
             results.append(result)
