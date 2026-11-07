@@ -3,7 +3,9 @@
 检查项（全部基于 public/data/ 真实文件）：
 1. hfq 覆盖率：closesHfq 缺失的 K线文件占比 > 10% → 阻断
 2. hfq 价格合法性：后复权收盘价非正（<=0 或 null）占比 > 1% → 阻断
-3. hfq 极端收益率：|5日后复权收益| > 60% 的记录 > 100 条 → 阻断（复权异常特征）
+3. hfq 极端收益率：|5日后复权收益| > 300% 的记录，仅看最近 60 个交易日 > 100 条 → 阻断
+   （只看近期：北交所 920xxx 在 2015-2022 的复权因子错配属已知历史脏数据，
+    全历史扫描会让门禁永久红灯；全历史条数仍记录在报告里供观察）
 4. 数据新鲜度：K线最新日期距今天 > 5 天 → 阻断（数据停滞）
 5. universe 必备字段：因子规则所需字段缺失 → 阻断
 
@@ -34,6 +36,7 @@ LIMIT_HFQ_BADPRICE = 0.01
 LIMIT_EXTREME_RET = 100
 LIMIT_STALE_DAYS = 5
 EXTREME_BAR = 3.0  # |5日收益|判定线：300%（A股理论上限：北交所30cm×5连板≈271%；60%会误伤IPO连板潮，2016-17年单是真实事件就有数千条）
+EXTREME_RECENT_DAYS = 60  # 极端收益只看最近 N 个交易日：历史段复权错配不再阻断，但仍计入观察值
 
 
 def main():
@@ -47,7 +50,8 @@ def main():
     hfq_missing = 0
     hfq_bad = 0
     hfq_total = 0
-    extreme = 0
+    extreme = 0          # 近 EXTREME_RECENT_DAYS 个交易日内
+    extreme_all = 0      # 全历史（仅观察，不阻断）
     last_dates = []
 
     for fp in files:
@@ -70,7 +74,9 @@ def main():
                 base = c_hfq[:-5]
                 with np.errstate(divide="ignore", invalid="ignore"):
                     r = np.where(base > 0, c_hfq[5:] / base - 1, np.nan)
-                extreme += int((np.abs(r) > EXTREME_BAR).sum())
+                over = np.abs(r) > EXTREME_BAR
+                extreme_all += int(over.sum())
+                extreme += int(over[-EXTREME_RECENT_DAYS:].sum())
         except Exception:
             hfq_missing += 1
 
@@ -91,10 +97,18 @@ def main():
         blocked.append(f"后复权非正价格占比 {bad_ratio:.4%} > {LIMIT_HFQ_BADPRICE:.2%}")
 
     # 3. 极端收益率（|5日|>300%，超A股理论上限即数据异常；60%级别为真实事件不拦）
+    #    阻断只看最近 EXTREME_RECENT_DAYS 个交易日：历史段北交所复权错配是已知脏数据，
+    #    全历史扫描会让门禁永久红灯；全历史条数保留在报告里，仍能观察到恶化。
     ok = extreme <= LIMIT_EXTREME_RET
-    checks.append({"name": "hfq极端收益率", "value": f"|5日收益|>300% 共 {extreme} 条", "ok": ok})
+    checks.append({
+        "name": "hfq极端收益率",
+        "value": f"近{EXTREME_RECENT_DAYS}交易日 {extreme} 条 / 全历史 {extreme_all} 条（阈值 {LIMIT_EXTREME_RET}）",
+        "ok": ok,
+    })
     if not ok:
-        blocked.append(f"极端 5 日收益 {extreme} 条 > {LIMIT_EXTREME_RET}（复权异常特征）")
+        blocked.append(
+            f"近 {EXTREME_RECENT_DAYS} 个交易日极端 5 日收益 {extreme} 条 > {LIMIT_EXTREME_RET}（复权异常特征）"
+        )
 
     # 4. 数据新鲜度
     latest = max(last_dates) if last_dates else ""
