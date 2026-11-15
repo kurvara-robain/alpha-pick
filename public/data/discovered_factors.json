@@ -1,407 +1,407 @@
 {
   "factors": [
     {
-      "ic_mean": -0.1028,
-      "ic_std": 0.1284,
-      "icir": -0.8006,
-      "valid_days": 112,
-      "abs_ic_mean": 0.1028,
-      "expression": "(open / ((ts_min(close,5) - (ts_mean(open,20) * low)) * volume))"
-    },
-    {
-      "ic_mean": -0.0886,
+      "ic_mean": -0.0951,
       "ic_std": 0.1422,
-      "icir": -0.6233,
+      "icir": -0.6689,
       "valid_days": 112,
-      "abs_ic_mean": 0.0886,
-      "expression": "(high / ts_mean(close,40))"
+      "abs_ic_mean": 0.0951,
+      "expression": "(close - ts_min(open,40))"
     },
     {
-      "ic_mean": -0.0856,
-      "ic_std": 0.1306,
-      "icir": -0.6556,
+      "ic_mean": 0.0942,
+      "ic_std": 0.1308,
+      "icir": 0.7201,
       "valid_days": 112,
-      "abs_ic_mean": 0.0856,
-      "expression": "(low - ts_min(high,40))"
+      "abs_ic_mean": 0.0942,
+      "expression": "(ts_mean(open,40) - high)"
     },
     {
-      "ic_mean": -0.0836,
-      "ic_std": 0.1282,
-      "icir": -0.6522,
+      "ic_mean": -0.0928,
+      "ic_std": 0.1338,
+      "icir": -0.6937,
       "valid_days": 112,
-      "abs_ic_mean": 0.0836,
-      "expression": "delta(open,40)"
+      "abs_ic_mean": 0.0928,
+      "expression": "(delta(low,20) + ((ts_std(high,40) - (low / open)) + ((close + ts_std(open,20)) / low)))"
     },
     {
-      "ic_mean": 0.0822,
-      "ic_std": 0.1539,
-      "icir": 0.5344,
+      "ic_mean": -0.0895,
+      "ic_std": 0.1167,
+      "icir": -0.7669,
       "valid_days": 112,
-      "abs_ic_mean": 0.0822,
-      "expression": "(ts_min(low,40) - high)"
+      "abs_ic_mean": 0.0895,
+      "expression": "((delta(close,20) + ts_corr(open,low,60)) + ts_std(high,20))"
     },
     {
-      "ic_mean": -0.0822,
-      "ic_std": 0.1264,
-      "icir": -0.6501,
+      "ic_mean": 0.0891,
+      "ic_std": 0.1493,
+      "icir": 0.5966,
       "valid_days": 112,
-      "abs_ic_mean": 0.0822,
-      "expression": "delta(high,40)"
+      "abs_ic_mean": 0.0891,
+      "expression": "((high + ts_min(high,60)) / low)"
     },
     {
-      "ic_mean": 0.0739,
-      "ic_std": 0.0973,
-      "icir": 0.7593,
+      "ic_mean": -0.0863,
+      "ic_std": 0.1393,
+      "icir": -0.6199,
       "valid_days": 112,
-      "abs_ic_mean": 0.0739,
-      "expression": "(low / ((ts_corr(close,open,5) - volume) * (ts_std(open,20) - high)))"
+      "abs_ic_mean": 0.0863,
+      "expression": "delta(close,40)"
     },
     {
-      "ic_mean": -0.0732,
-      "ic_std": 0.1481,
-      "icir": -0.4939,
+      "ic_mean": 0.0816,
+      "ic_std": 0.1422,
+      "icir": 0.5736,
       "valid_days": 112,
-      "abs_ic_mean": 0.0732,
-      "expression": "(delta(low,60) / close)"
+      "abs_ic_mean": 0.0816,
+      "expression": "(ts_min(close,40) / close)"
     },
     {
-      "ic_mean": -0.0716,
-      "ic_std": 0.1222,
-      "icir": -0.5861,
+      "ic_mean": -0.0772,
+      "ic_std": 0.1051,
+      "icir": -0.7347,
       "valid_days": 112,
-      "abs_ic_mean": 0.0716,
-      "expression": "(delta(open,40) * low)"
+      "abs_ic_mean": 0.0772,
+      "expression": "(delay(high,5) - delay(close,20))"
     },
     {
-      "ic_mean": -0.0691,
-      "ic_std": 0.1239,
-      "icir": -0.5575,
+      "ic_mean": -0.077,
+      "ic_std": 0.1119,
+      "icir": -0.6876,
       "valid_days": 112,
-      "abs_ic_mean": 0.0691,
-      "expression": "(open - delay(low,60))"
+      "abs_ic_mean": 0.077,
+      "expression": "delta(close,20)"
     },
     {
-      "ic_mean": -0.0672,
-      "ic_std": 0.1439,
-      "icir": -0.4669,
+      "ic_mean": -0.0768,
+      "ic_std": 0.1205,
+      "icir": -0.6376,
       "valid_days": 112,
-      "abs_ic_mean": 0.0672,
-      "expression": "ts_std(close,5)"
-    },
-    {
-      "ic_mean": -0.0671,
-      "ic_std": 0.1206,
-      "icir": -0.556,
-      "valid_days": 112,
-      "abs_ic_mean": 0.0671,
-      "expression": "delta(high,60)"
-    },
-    {
-      "ic_mean": -0.0667,
-      "ic_std": 0.1215,
-      "icir": -0.5485,
-      "valid_days": 112,
-      "abs_ic_mean": 0.0667,
-      "expression": "delta(open,60)"
-    },
-    {
-      "ic_mean": 0.0665,
-      "ic_std": 0.1242,
-      "icir": 0.5357,
-      "valid_days": 112,
-      "abs_ic_mean": 0.0665,
-      "expression": "(ts_mean(close,40) - low)"
-    },
-    {
-      "ic_mean": -0.0645,
-      "ic_std": 0.1168,
-      "icir": -0.5522,
-      "valid_days": 112,
-      "abs_ic_mean": 0.0645,
+      "abs_ic_mean": 0.0768,
       "expression": "delta(low,20)"
     },
     {
-      "ic_mean": 0.0642,
-      "ic_std": 0.1508,
-      "icir": 0.4257,
+      "ic_mean": -0.0756,
+      "ic_std": 0.1182,
+      "icir": -0.64,
       "valid_days": 112,
-      "abs_ic_mean": 0.0642,
-      "expression": "((low - high) * low)"
-    },
-    {
-      "ic_mean": -0.064,
-      "ic_std": 0.0885,
-      "icir": -0.7238,
-      "valid_days": 112,
-      "abs_ic_mean": 0.064,
-      "expression": "ts_corr(volume,high,10)"
-    },
-    {
-      "ic_mean": -0.0638,
-      "ic_std": 0.1146,
-      "icir": -0.5572,
-      "valid_days": 112,
-      "abs_ic_mean": 0.0638,
+      "abs_ic_mean": 0.0756,
       "expression": "delta(open,20)"
     },
     {
-      "ic_mean": -0.0634,
-      "ic_std": 0.1407,
-      "icir": -0.4503,
+      "ic_mean": -0.0732,
+      "ic_std": 0.1422,
+      "icir": -0.5147,
       "valid_days": 112,
-      "abs_ic_mean": 0.0634,
-      "expression": "ts_std(low,5)"
+      "abs_ic_mean": 0.0732,
+      "expression": "(((delta(open,20) / open) * (ts_max(high,20) - close)) / high)"
     },
     {
-      "ic_mean": 0.0627,
-      "ic_std": 0.1649,
-      "icir": 0.3802,
+      "ic_mean": 0.0729,
+      "ic_std": 0.1116,
+      "icir": 0.6533,
       "valid_days": 112,
-      "abs_ic_mean": 0.0627,
-      "expression": "(ts_std(high,60) - close)"
+      "abs_ic_mean": 0.0729,
+      "expression": "(ts_corr(close,low,10) / ts_max(volume,10))"
     },
     {
-      "ic_mean": -0.0623,
-      "ic_std": 0.1642,
-      "icir": -0.3796,
+      "ic_mean": -0.0728,
+      "ic_std": 0.1383,
+      "icir": -0.5263,
       "valid_days": 112,
-      "abs_ic_mean": 0.0623,
-      "expression": "(open - ts_std(low,60))"
+      "abs_ic_mean": 0.0728,
+      "expression": "(high / delay(high,20))"
+    },
+    {
+      "ic_mean": -0.0725,
+      "ic_std": 0.1388,
+      "icir": -0.5225,
+      "valid_days": 112,
+      "abs_ic_mean": 0.0725,
+      "expression": "(delta(high,20) / close)"
+    },
+    {
+      "ic_mean": -0.0716,
+      "ic_std": 0.1317,
+      "icir": -0.5438,
+      "valid_days": 112,
+      "abs_ic_mean": 0.0716,
+      "expression": "((delay(low,5) / (ts_mean(close,40) * high)) * high)"
+    },
+    {
+      "ic_mean": -0.0713,
+      "ic_std": 0.115,
+      "icir": -0.6203,
+      "valid_days": 112,
+      "abs_ic_mean": 0.0713,
+      "expression": "delta(high,20)"
+    },
+    {
+      "ic_mean": -0.0696,
+      "ic_std": 0.145,
+      "icir": -0.4798,
+      "valid_days": 112,
+      "abs_ic_mean": 0.0696,
+      "expression": "((close + ts_max(open,10)) / ts_mean(close,20))"
+    },
+    {
+      "ic_mean": -0.0684,
+      "ic_std": 0.1158,
+      "icir": -0.591,
+      "valid_days": 112,
+      "abs_ic_mean": 0.0684,
+      "expression": "(close / ((ts_mean(close,20) - (close * volume)) * (volume - high)))"
+    },
+    {
+      "ic_mean": -0.067,
+      "ic_std": 0.136,
+      "icir": -0.4928,
+      "valid_days": 112,
+      "abs_ic_mean": 0.067,
+      "expression": "(delta(low,60) + (close / low))"
+    },
+    {
+      "ic_mean": 0.0669,
+      "ic_std": 0.1325,
+      "icir": 0.5045,
+      "valid_days": 112,
+      "abs_ic_mean": 0.0669,
+      "expression": "(((ts_corr(low,close,5) + delay(close,10)) - close) / open)"
+    },
+    {
+      "ic_mean": -0.0668,
+      "ic_std": 0.1362,
+      "icir": -0.4902,
+      "valid_days": 112,
+      "abs_ic_mean": 0.0668,
+      "expression": "delta(low,60)"
+    },
+    {
+      "ic_mean": 0.0663,
+      "ic_std": 0.1338,
+      "icir": 0.4956,
+      "valid_days": 112,
+      "abs_ic_mean": 0.0663,
+      "expression": "(ts_corr(low,open,40) - delta(close,60))"
+    },
+    {
+      "ic_mean": -0.0662,
+      "ic_std": 0.1607,
+      "icir": -0.4118,
+      "valid_days": 112,
+      "abs_ic_mean": 0.0662,
+      "expression": "(open + delta(open,10))"
+    },
+    {
+      "ic_mean": -0.0659,
+      "ic_std": 0.1358,
+      "icir": -0.4851,
+      "valid_days": 112,
+      "abs_ic_mean": 0.0659,
+      "expression": "delta(open,60)"
+    },
+    {
+      "ic_mean": -0.0659,
+      "ic_std": 0.1358,
+      "icir": -0.4851,
+      "valid_days": 112,
+      "abs_ic_mean": 0.0659,
+      "expression": "(delta(open,60) + (high / (close + (high + high))))"
+    },
+    {
+      "ic_mean": -0.0645,
+      "ic_std": 0.1453,
+      "icir": -0.4443,
+      "valid_days": 112,
+      "abs_ic_mean": 0.0645,
+      "expression": "((high - low) + ts_std(open,60))"
+    },
+    {
+      "ic_mean": -0.064,
+      "ic_std": 0.1606,
+      "icir": -0.3987,
+      "valid_days": 112,
+      "abs_ic_mean": 0.064,
+      "expression": "((ts_max(open,10) * close) / ts_mean(open,20))"
+    },
+    {
+      "ic_mean": -0.0632,
+      "ic_std": 0.161,
+      "icir": -0.3924,
+      "valid_days": 112,
+      "abs_ic_mean": 0.0632,
+      "expression": "(low + ts_corr(low,volume,20))"
+    },
+    {
+      "ic_mean": -0.0629,
+      "ic_std": 0.1399,
+      "icir": -0.4497,
+      "valid_days": 112,
+      "abs_ic_mean": 0.0629,
+      "expression": "ts_std(high,5)"
+    },
+    {
+      "ic_mean": -0.0628,
+      "ic_std": 0.161,
+      "icir": -0.39,
+      "valid_days": 112,
+      "abs_ic_mean": 0.0628,
+      "expression": "((high / delay(close,40)) + low)"
     },
     {
       "ic_mean": -0.0622,
-      "ic_std": 0.1595,
-      "icir": -0.3903,
+      "ic_std": 0.1609,
+      "icir": -0.3866,
       "valid_days": 112,
       "abs_ic_mean": 0.0622,
-      "expression": "(high + ((volume / ts_min(volume,10)) + delay(high,5)))"
+      "expression": "(((close + open) + (ts_std(high,40) / open)) - ts_mean(high,5))"
     },
     {
-      "ic_mean": -0.0618,
-      "ic_std": 0.1448,
-      "icir": -0.4267,
+      "ic_mean": -0.0617,
+      "ic_std": 0.1459,
+      "icir": -0.4231,
       "valid_days": 112,
-      "abs_ic_mean": 0.0618,
-      "expression": "ts_std(close,10)"
+      "abs_ic_mean": 0.0617,
+      "expression": "ts_std(close,5)"
     },
     {
-      "ic_mean": 0.061,
-      "ic_std": 0.1634,
-      "icir": 0.3731,
+      "ic_mean": -0.0605,
+      "ic_std": 0.1608,
+      "icir": -0.3765,
       "valid_days": 112,
-      "abs_ic_mean": 0.061,
-      "expression": "((volume - (close * volume)) / (volume + (high * ts_std(low,40))))"
+      "abs_ic_mean": 0.0605,
+      "expression": "(close + ts_std(close,60))"
     },
     {
-      "ic_mean": -0.0606,
-      "ic_std": 0.1635,
-      "icir": -0.3707,
+      "ic_mean": -0.0601,
+      "ic_std": 0.1442,
+      "icir": -0.4166,
       "valid_days": 112,
-      "abs_ic_mean": 0.0606,
-      "expression": "(high - (low / ((low - low) / low)))"
+      "abs_ic_mean": 0.0601,
+      "expression": "ts_std(open,60)"
     },
     {
-      "ic_mean": -0.0606,
-      "ic_std": 0.1634,
-      "icir": -0.3707,
+      "ic_mean": -0.0601,
+      "ic_std": 0.1598,
+      "icir": -0.3762,
       "valid_days": 112,
-      "abs_ic_mean": 0.0606,
-      "expression": "(((ts_max(close,60) - ts_max(close,60)) + ((open / open) / (high * delay(high,60)))) + high)"
+      "abs_ic_mean": 0.0601,
+      "expression": "(high + ts_std(low,10))"
     },
     {
-      "ic_mean": 0.0604,
-      "ic_std": 0.1187,
-      "icir": 0.509,
+      "ic_mean": -0.0596,
+      "ic_std": 0.1598,
+      "icir": -0.3728,
       "valid_days": 112,
-      "abs_ic_mean": 0.0604,
-      "expression": "(low - close)"
+      "abs_ic_mean": 0.0596,
+      "expression": "(low + ts_std(low,5))"
     },
     {
-      "ic_mean": -0.0604,
-      "ic_std": 0.163,
-      "icir": -0.3703,
+      "ic_mean": -0.0596,
+      "ic_std": 0.1606,
+      "icir": -0.3708,
       "valid_days": 112,
-      "abs_ic_mean": 0.0604,
-      "expression": "ts_max(close,5)"
+      "abs_ic_mean": 0.0596,
+      "expression": "ts_min(close,5)"
     },
     {
-      "ic_mean": -0.0603,
-      "ic_std": 0.1627,
-      "icir": -0.3702,
+      "ic_mean": -0.0596,
+      "ic_std": 0.1609,
+      "icir": -0.3704,
       "valid_days": 112,
-      "abs_ic_mean": 0.0603,
-      "expression": "(ts_mean(high,10) + ts_corr(high,volume,5))"
+      "abs_ic_mean": 0.0596,
+      "expression": "(ts_std(close,60) + low)"
     },
     {
-      "ic_mean": -0.0599,
-      "ic_std": 0.1421,
-      "icir": -0.4213,
+      "ic_mean": 0.0596,
+      "ic_std": 0.1591,
+      "icir": 0.3744,
       "valid_days": 112,
-      "abs_ic_mean": 0.0599,
-      "expression": "ts_std(high,60)"
+      "abs_ic_mean": 0.0596,
+      "expression": "((ts_min(low,5) / low) - ts_max(close,5))"
     },
     {
-      "ic_mean": -0.0595,
-      "ic_std": 0.1631,
-      "icir": -0.365,
+      "ic_mean": 0.0595,
+      "ic_std": 0.1442,
+      "icir": 0.4128,
       "valid_days": 112,
       "abs_ic_mean": 0.0595,
+      "expression": "(delay(close,40) / ((delay(close,40) / close) + (delta(close,40) + delay(high,20))))"
+    },
+    {
+      "ic_mean": -0.0593,
+      "ic_std": 0.1608,
+      "icir": -0.3686,
+      "valid_days": 112,
+      "abs_ic_mean": 0.0593,
+      "expression": "(close / ts_corr(close,open,60))"
+    },
+    {
+      "ic_mean": 0.0593,
+      "ic_std": 0.1403,
+      "icir": 0.4222,
+      "valid_days": 112,
+      "abs_ic_mean": 0.0593,
+      "expression": "(ts_mean(open,20) / close)"
+    },
+    {
+      "ic_mean": -0.0592,
+      "ic_std": 0.1597,
+      "icir": -0.3709,
+      "valid_days": 112,
+      "abs_ic_mean": 0.0592,
+      "expression": "ts_min(low,10)"
+    },
+    {
+      "ic_mean": -0.0592,
+      "ic_std": 0.1598,
+      "icir": -0.3704,
+      "valid_days": 112,
+      "abs_ic_mean": 0.0592,
       "expression": "ts_mean(close,5)"
     },
     {
-      "ic_mean": -0.0595,
-      "ic_std": 0.1625,
-      "icir": -0.366,
+      "ic_mean": -0.0592,
+      "ic_std": 0.1603,
+      "icir": -0.3695,
       "valid_days": 112,
-      "abs_ic_mean": 0.0595,
-      "expression": "(ts_max(close,5) + (delay(low,40) / ts_min(open,60)))"
-    },
-    {
-      "ic_mean": -0.0594,
-      "ic_std": 0.1632,
-      "icir": -0.364,
-      "valid_days": 112,
-      "abs_ic_mean": 0.0594,
-      "expression": "(ts_corr(low,high,60) + open)"
+      "abs_ic_mean": 0.0592,
+      "expression": "ts_min(close,10)"
     },
     {
       "ic_mean": -0.059,
-      "ic_std": 0.1605,
-      "icir": -0.3674,
+      "ic_std": 0.1443,
+      "icir": -0.4088,
       "valid_days": 112,
       "abs_ic_mean": 0.059,
-      "expression": "(high + high)"
-    },
-    {
-      "ic_mean": 0.059,
-      "ic_std": 0.1044,
-      "icir": 0.5653,
-      "valid_days": 112,
-      "abs_ic_mean": 0.059,
-      "expression": "(ts_corr(high,low,10) + (open - (close + (high - close))))"
+      "expression": "ts_std(low,60)"
     },
     {
       "ic_mean": -0.0589,
-      "ic_std": 0.1629,
-      "icir": -0.3619,
+      "ic_std": 0.1597,
+      "icir": -0.3691,
       "valid_days": 112,
       "abs_ic_mean": 0.0589,
-      "expression": "ts_max(open,5)"
+      "expression": "ts_mean(high,5)"
     },
     {
-      "ic_mean": 0.0589,
-      "ic_std": 0.1627,
-      "icir": 0.362,
+      "ic_mean": -0.0588,
+      "ic_std": 0.1603,
+      "icir": -0.3668,
       "valid_days": 112,
-      "abs_ic_mean": 0.0589,
-      "expression": "(ts_corr(low,close,40) - ts_min(open,5))"
+      "abs_ic_mean": 0.0588,
+      "expression": "(ts_std(open,60) + (open - (open / (open * volume))))"
     },
     {
-      "ic_mean": -0.0587,
-      "ic_std": 0.1631,
-      "icir": -0.3595,
-      "valid_days": 112,
-      "abs_ic_mean": 0.0587,
-      "expression": "ts_mean(open,5)"
-    },
-    {
-      "ic_mean": -0.0587,
-      "ic_std": 0.1632,
-      "icir": -0.3595,
+      "ic_mean": 0.0587,
+      "ic_std": 0.1597,
+      "icir": 0.3674,
       "valid_days": 112,
       "abs_ic_mean": 0.0587,
-      "expression": "ts_mean(low,5)"
-    },
-    {
-      "ic_mean": -0.0586,
-      "ic_std": 0.1628,
-      "icir": -0.3601,
-      "valid_days": 112,
-      "abs_ic_mean": 0.0586,
-      "expression": "ts_min(open,5)"
-    },
-    {
-      "ic_mean": -0.0585,
-      "ic_std": 0.1422,
-      "icir": -0.4113,
-      "valid_days": 112,
-      "abs_ic_mean": 0.0585,
-      "expression": "ts_std(close,60)"
-    },
-    {
-      "ic_mean": -0.0585,
-      "ic_std": 0.162,
-      "icir": -0.3609,
-      "valid_days": 112,
-      "abs_ic_mean": 0.0585,
-      "expression": "(ts_std(open,60) + ts_mean(high,5))"
-    },
-    {
-      "ic_mean": -0.0583,
-      "ic_std": 0.1629,
-      "icir": -0.3579,
-      "valid_days": 112,
-      "abs_ic_mean": 0.0583,
-      "expression": "ts_max(high,10)"
-    },
-    {
-      "ic_mean": -0.0583,
-      "ic_std": 0.1613,
-      "icir": -0.3616,
-      "valid_days": 112,
-      "abs_ic_mean": 0.0583,
-      "expression": "(open + close)"
-    },
-    {
-      "ic_mean": -0.0582,
-      "ic_std": 0.1614,
-      "icir": -0.3607,
-      "valid_days": 112,
-      "abs_ic_mean": 0.0582,
-      "expression": "(close + close)"
-    },
-    {
-      "ic_mean": -0.0581,
-      "ic_std": 0.1629,
-      "icir": -0.3569,
-      "valid_days": 112,
-      "abs_ic_mean": 0.0581,
-      "expression": "ts_min(open,10)"
-    },
-    {
-      "ic_mean": -0.058,
-      "ic_std": 0.1628,
-      "icir": -0.3564,
-      "valid_days": 112,
-      "abs_ic_mean": 0.058,
-      "expression": "ts_mean(close,10)"
-    },
-    {
-      "ic_mean": -0.0577,
-      "ic_std": 0.1624,
-      "icir": -0.355,
-      "valid_days": 112,
-      "abs_ic_mean": 0.0577,
-      "expression": "ts_max(close,10)"
-    },
-    {
-      "ic_mean": -0.0577,
-      "ic_std": 0.1623,
-      "icir": -0.3558,
-      "valid_days": 112,
-      "abs_ic_mean": 0.0577,
-      "expression": "(close + low)"
-    },
-    {
-      "ic_mean": -0.0574,
-      "ic_std": 0.142,
-      "icir": -0.4042,
-      "valid_days": 112,
-      "abs_ic_mean": 0.0574,
-      "expression": "ts_std(open,60)"
+      "expression": "(close - (close + ts_min(open,5)))"
     }
   ],
-  "discovered_at": "2026-11-08T05:08:55.919181",
+  "discovered_at": "2026-11-15T10:36:43.503731",
   "count": 50,
   "generated": 500
 }
