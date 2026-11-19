@@ -1938,14 +1938,14 @@
    "ic10": null,
    "ic40": null,
    "ic20": {
-    "mean": 0.1226,
-    "ir": 0.68,
+    "mean": 0.1175,
+    "ir": 0.69,
     "tstat": null,
     "posRatio": null,
-    "dates": 168
+    "dates": 170
    },
-   "dic20": 0.1226,
-   "dicir20": 0.68,
+   "dic20": 0.1175,
+   "dicir20": 0.69,
    "spread20": null,
    "spreadPosRatio": null
   }

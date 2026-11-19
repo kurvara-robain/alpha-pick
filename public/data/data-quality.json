@@ -1,10 +1,10 @@
 {
- "checkedAt": "2026-11-19T10:22:30+08:00",
- "ok": false,
+ "checkedAt": "2026-11-20T02:41:09+08:00",
+ "ok": true,
  "checks": [
   {
    "name": "hfq覆盖率",
-   "value": "100.0%（5585/5585）",
+   "value": "100.0%（5586/5586）",
    "ok": true
   },
   {
@@ -19,17 +19,15 @@
   },
   {
    "name": "数据新鲜度",
-   "value": "最新K线 2026-11-13（6 天前）",
-   "ok": false
+   "value": "最新K线 2026-11-19（1 天前）",
+   "ok": true
   },
   {
    "name": "universe字段",
-   "value": "5585 只，缺失字段：无",
+   "value": "5586 只，缺失字段：无",
    "ok": true
   }
  ],
- "blocked": [
-  "最新K线日期 2026-11-13，距今 6 天 > 5 天"
- ],
- "elapsedSec": 4.3
+ "blocked": [],
+ "elapsedSec": 4.2
 }
